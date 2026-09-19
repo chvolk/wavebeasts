@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Create account · WaveBeasts{% endblock %}
+{% block content %}
+<div class="panel" style="max-width:420px">
+  <h1>Create account</h1>
+  <form method="post">{% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Create account</button>
+  </form>
+  <p class="muted">Already have one? <a href="/login/">Sign in</a>.</p>
+</div>
+{% endblock %}

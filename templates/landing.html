@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+  <h1>Turn the world into monsters.</h1>
+  <p class="muted">WaveBeasts is a scan-to-creature game. Point sensors at the real world — a barcode, a QR
+  code, a photo, WiFi, Bluetooth, RF, temperature, light — and generate collectible <b>WaveBeasts</b>. The
+  richer your sensor sweep, the rarer the catch.</p>
+  <p>Run the engine anywhere (a Raspberry Pi, a laptop, your Android phone) and link <b>listener nodes</b>
+  to your account: each node feeds rate-limited sensor snapshots to your profile, so your collection grows
+  even while you go about your day. Trade and battle other trainers.</p>
+  {% if user.is_authenticated %}
+    <p><a href="/me/"><button>Go to my profile →</button></a></p>
+  {% else %}
+    <p><a href="/signup/"><button>Create an account →</button></a> &nbsp; <a href="/login/">or sign in</a></p>
+  {% endif %}
+</div>
+<div class="panel">
+  <h2>How it works</h2>
+  <p class="muted">1. Create an account. 2. Add a node (your phone, a Pi, EDI/Bishop, or any PC running the
+  WaveBeast engine). 3. The node uploads sensor snapshots on a timer — speed it up by spending in-game
+  currency. 4. Catch, collect, trade, and battle.</p>
+</div>
+{% endblock %}

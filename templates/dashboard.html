@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}My Profile · WaveBeasts{% endblock %}
+{% block content %}
+<h1>{{ user.username }}</h1>
+<div>
+  <span class="chip">Shards <b>{{ wallet.shards }}</b></span>
+  <span class="chip">Cores <b>{{ wallet.cores }}</b></span>
+  {% for it in items %}<span class="chip">{{ it.item_id }} <b>{{ it.qty }}</b></span>{% endfor %}
+</div>
+
+<h2>Nodes</h2>
+<div class="panel">
+  {% if nodes %}
+  <table>
+    <tr><th>Name</th><th>Kind</th><th>Token</th><th>Next snapshot</th><th></th></tr>
+    {% for n in nodes %}
+    <tr>
+      <td>{{ n.name }}</td><td>{{ n.kind }}</td>
+      <td><code>{{ n.token }}</code></td>
+      <td>{% if n.seconds_until_ready %}{{ n.seconds_until_ready }}s{% else %}ready{% endif %}
+          {% if n.boosted_until %}<span class="muted">(boosted)</span>{% endif %}</td>
+      <td><form method="post" action="/nodes/{{ n.id }}/boost">{% csrf_token %}<button class="ghost" type="submit">Boost (1 core)</button></form></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">No nodes yet. Add one below.</p>{% endif %}
+  <form method="post" action="/nodes/new" style="margin-top:12px">{% csrf_token %}
+    <input name="name" placeholder="node name" required>
+    <select name="kind"><option>phone</option><option>edi</option><option>bishop</option><option>pi</option><option>pc</option></select>
+    <button type="submit">Add node</button>
+  </form>
+</div>
+
+<h2>Connect a node</h2>
+<div class="panel">
+  <p class="muted">A node uploads a ScanBundle snapshot with its token. It need not run the full engine:</p>
+  <pre>curl -X POST {{ request.scheme }}://{{ request.get_host }}/api/snapshot \
+  -H "X-WB-Node-Token: &lt;your node token&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{"schema":"wavebeast.scanbundle","v":1,"signals":[
+        {"kind":"wifi","strength":0.7,"value":{"rssi":-50}},
+        {"kind":"scalar","strength":0.6,"value":{"metric":"lux","n":300}} ]}'</pre>
+</div>
+
+<h2>Collection ({{ owned|length }})</h2>
+<div class="grid">
+  {% for b in owned %}
+  <div class="card">
+    <img src="/sprite/{{ b.id }}.png" alt="">
+    <div><b>{{ b.name }}</b>{% if b.shiny %} ✦{% endif %}</div>
+    <div class="r-{{ b.rarity }}">{{ b.rarity }} · Lv {{ b.level }}</div>
+  </div>
+  {% empty %}<p class="muted">No caught beasts yet.</p>{% endfor %}
+</div>
+
+{% if wild %}
+<h2>Wild sightings — catch them ({{ wild|length }})</h2>
+<div class="grid">
+  {% for b in wild %}
+  <div class="card">
+    <img src="/sprite/{{ b.id }}.png" alt="">
+    <div><b>{{ b.name }}</b>{% if b.shiny %} ✦{% endif %}</div>
+    <div class="r-{{ b.rarity }}">{{ b.rarity }}</div>
+    <form method="post" action="/beast/{{ b.id }}/catch" style="margin-top:6px">{% csrf_token %}
+      <select name="drive"><option>spark_drive</option><option>pulse_drive</option><option>surge_drive</option><option>nova_drive</option></select>
+      <button type="submit">Throw</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}WaveBeasts{% endblock %}</title>
+<style>
+  :root{--bg:#0b0d13;--panel:#151826;--line:#252a3d;--ink:#e7ecff;--mut:#8b93b5;--acc:#ffa24b;--grn:#5fd39a;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,sans-serif}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  header{display:flex;align-items:center;gap:16px;padding:14px 22px;border-bottom:1px solid var(--line)}
+  header .logo{font-weight:900;letter-spacing:3px}
+  header nav{margin-left:auto;display:flex;gap:16px;align-items:center;font-size:14px}
+  main{max-width:980px;margin:0 auto;padding:24px 16px 70px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:14px 0}
+  .chip{display:inline-flex;gap:6px;background:#1d1d2b;border:1px solid var(--line);border-radius:20px;padding:5px 12px;margin:0 8px 8px 0;font-size:13px}
+  .chip b{color:var(--acc)}
+  h1{letter-spacing:1px} h2{font-size:13px;letter-spacing:2px;color:var(--mut);text-transform:uppercase;margin:20px 0 8px}
+  button,input[type=submit]{background:var(--acc);color:#1a1206;border:0;border-radius:8px;padding:8px 13px;font-weight:700;cursor:pointer}
+  button.ghost{background:transparent;color:var(--mut);border:1px solid var(--line)}
+  input,select{background:#10131e;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px}
+  code{background:#10131e;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:13px}
+  pre{background:#10131e;border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;font-size:12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+  .card{background:#10131e;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+  .card img{width:96px;height:96px;image-rendering:pixelated}
+  .r-common{color:#9aa3c0}.r-uncommon{color:#5fd39a}.r-rare{color:#5aa9ff}.r-epic{color:#c79bff}.r-legendary{color:#ffcf5a}
+  table{width:100%;border-collapse:collapse} td,th{border-bottom:1px solid var(--line);padding:8px;text-align:left;font-size:14px}
+  .muted{color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">WAVEBEASTS</span>
+  <nav>
+    {% if user.is_authenticated %}
+      <a href="/me/">My Profile</a>
+      <form method="post" action="/logout/" style="display:inline"><input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}"><button class="ghost" type="submit">Sign out</button></form>
+    {% else %}
+      <a href="/login/">Sign in</a><a href="/signup/">Create account</a>
+    {% endif %}
+  </nav>
+</header>
+<main>{% block content %}{% endblock %}</main>
+</body>
+</html>

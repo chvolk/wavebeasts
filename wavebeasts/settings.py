@@ -136,6 +136,7 @@ ALLOWED_HOSTS = os.environ.get(
 CSRF_TRUSTED_ORIGINS = ["https://wavebeasts.com", "https://www.wavebeasts.com", "https://*.railway.app"]
 
 TEMPLATES[0]["DIRS"] = [BASE_DIR / "templates"]
+TEMPLATES[0]["OPTIONS"]["context_processors"].append("play.context.wallet")
 
 if "whitenoise.middleware.WhiteNoiseMiddleware" not in MIDDLEWARE:
     MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")

@@ -1,47 +1,146 @@
-<!doctype html>
+{% load static %}<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}WaveBeasts{% endblock %}</title>
+<meta name="description" content="{% block desc %}Turn the real world into monsters. Scan signals, catch WaveBeasts, trade and battle.{% endblock %}">
+<link rel="icon" href="{% static 'favicon.svg' %}" type="image/svg+xml">
+<meta name="theme-color" content="#0a0a0b">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="WaveBeasts">
+<meta property="og:title" content="{% block og_title %}WaveBeasts{% endblock %}">
+<meta property="og:description" content="{% block og_desc %}Turn the real world into monsters. Scan signals, catch WaveBeasts, trade and battle across a network of listener nodes.{% endblock %}">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'og.png' %}">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="WaveBeasts">
+<meta name="twitter:description" content="Turn the real world into monsters. Scan, catch, trade, battle.">
+<meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'og.png' %}">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root{--bg:#0b0d13;--panel:#151826;--line:#252a3d;--ink:#e7ecff;--mut:#8b93b5;--acc:#ffa24b;--grn:#5fd39a;}
+  :root{
+    --bg:#0a0a0b; --panel:#131316; --elev:#1a1a20; --line:#2a2a31; --line2:#3a3a44;
+    --ink:#e9ebf0; --mut:#9095a0; --dim:#6b7080;
+    --silver:#c7ccd6; --silver-hi:#eef1f6;
+    --gold:#d4af37; --gold-hi:#f0cf6b; --gold-dim:#8f7526;
+    --red:#d64545; --red-dim:#8f2f2f;
+    --shadow:0 8px 30px rgba(0,0,0,.5);
+  }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,sans-serif}
-  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
-  header{display:flex;align-items:center;gap:16px;padding:14px 22px;border-bottom:1px solid var(--line)}
-  header .logo{font-weight:900;letter-spacing:3px}
-  header nav{margin-left:auto;display:flex;gap:16px;align-items:center;font-size:14px}
-  main{max-width:980px;margin:0 auto;padding:24px 16px 70px}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:14px 0}
-  .chip{display:inline-flex;gap:6px;background:#1d1d2b;border:1px solid var(--line);border-radius:20px;padding:5px 12px;margin:0 8px 8px 0;font-size:13px}
-  .chip b{color:var(--acc)}
-  h1{letter-spacing:1px} h2{font-size:13px;letter-spacing:2px;color:var(--mut);text-transform:uppercase;margin:20px 0 8px}
-  button,input[type=submit]{background:var(--acc);color:#1a1206;border:0;border-radius:8px;padding:8px 13px;font-weight:700;cursor:pointer}
-  button.ghost{background:transparent;color:var(--mut);border:1px solid var(--line)}
-  input,select{background:#10131e;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px}
-  code{background:#10131e;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:13px}
-  pre{background:#10131e;border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;font-size:12px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
-  .card{background:#10131e;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
-  .card img{width:96px;height:96px;image-rendering:pixelated}
-  .r-common{color:#9aa3c0}.r-uncommon{color:#5fd39a}.r-rare{color:#5aa9ff}.r-epic{color:#c79bff}.r-legendary{color:#ffcf5a}
-  table{width:100%;border-collapse:collapse} td,th{border-bottom:1px solid var(--line);padding:8px;text-align:left;font-size:14px}
-  .muted{color:var(--mut)}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.55;
+    background-image:radial-gradient(1200px 600px at 80% -10%, rgba(212,175,55,.06), transparent 60%),
+                     radial-gradient(900px 500px at -10% 10%, rgba(214,69,69,.05), transparent 55%);
+    background-attachment:fixed;min-height:100vh}
+  a{color:var(--gold);text-decoration:none} a:hover{color:var(--gold-hi)}
+  h1,h2,h3,.brand{font-family:'Space Grotesk',sans-serif}
+  .wordmark{font-weight:700;letter-spacing:5px;background:linear-gradient(100deg,var(--silver-hi),var(--gold) 60%,var(--gold-dim));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+
+  nav.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:20px;padding:14px 22px;
+    background:rgba(10,10,11,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  nav.top .brand{font-size:19px}
+  nav.top .links{display:flex;gap:6px;margin-left:8px}
+  nav.top .links a{color:var(--mut);font-weight:500;padding:6px 12px;border-radius:8px;font-size:14px;letter-spacing:.3px}
+  nav.top .links a:hover{color:var(--ink);background:var(--elev)}
+  nav.top .links a.active{color:var(--gold);background:rgba(212,175,55,.10);box-shadow:inset 0 -2px 0 var(--gold)}
+  nav.top .right{margin-left:auto;display:flex;align-items:center;gap:10px}
+
+  main{max-width:1040px;margin:0 auto;padding:26px 18px 80px}
+
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--elev);border:1px solid var(--line);
+    border-radius:20px;padding:5px 12px;font-size:13px;color:var(--mut)}
+  .chip b{color:var(--gold);font-family:'Space Grotesk'}
+  .chip.silver b{color:var(--silver-hi)}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:0;border-radius:10px;padding:10px 16px;
+    font-family:'Space Grotesk';font-weight:600;letter-spacing:.5px;font-size:14px;
+    background:linear-gradient(180deg,var(--gold-hi),var(--gold) 55%,var(--gold-dim));color:#160f02;
+    box-shadow:0 2px 0 rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.35)}
+  .btn:hover{filter:brightness(1.06)}
+  .btn.sec{background:transparent;color:var(--silver);border:1px solid var(--line2);box-shadow:none}
+  .btn.sec:hover{border-color:var(--silver);color:var(--silver-hi)}
+  .btn.danger{background:transparent;color:var(--red);border:1px solid var(--red-dim);box-shadow:none}
+  .btn.danger:hover{background:rgba(214,69,69,.1)}
+  .btn.sm{padding:7px 11px;font-size:13px}
+
+  .card{background:linear-gradient(180deg,var(--panel),#0f0f12);border:1px solid var(--line);border-radius:16px;
+    padding:18px;box-shadow:var(--shadow)}
+  .section-label{font-family:'Space Grotesk';font-size:12px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;margin:26px 0 12px;display:flex;align-items:center;gap:10px}
+  .section-label::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+
+  input,select,textarea{width:100%;background:#0d0d10;border:1px solid var(--line2);color:var(--ink);
+    border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold-dim);box-shadow:0 0 0 3px rgba(212,175,55,.12)}
+  label{font-size:13px;color:var(--mut);display:block;margin:0 0 6px}
+  code{background:#0d0d10;border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:13px;color:var(--silver)}
+  pre{background:#0d0d10;border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;font-size:12.5px;color:var(--silver)}
+  table{width:100%;border-collapse:collapse}
+  td,th{border-bottom:1px solid var(--line);padding:10px 8px;text-align:left;font-size:14px;vertical-align:middle}
+  th{color:var(--dim);font-weight:600;font-size:12px;letter-spacing:1px;text-transform:uppercase}
+  .muted{color:var(--mut)} .dim{color:var(--dim)}
+
+  /* beast cards */
+  .beasts{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:14px}
+  .beast{position:relative;background:linear-gradient(180deg,var(--panel),#0e0e11);border:1px solid var(--line);
+    border-radius:14px;padding:12px;text-align:center;transition:transform .12s,border-color .12s}
+  .beast:hover{transform:translateY(-3px);border-color:var(--line2)}
+  .beast .stage{background:radial-gradient(60% 60% at 50% 45%,rgba(212,175,55,.10),transparent 70%);border-radius:12px;padding:6px}
+  .beast img{width:104px;height:104px;image-rendering:pixelated}
+  .beast .nm{font-family:'Space Grotesk';font-weight:600;font-size:15px;margin-top:4px}
+  .beast .ty{font-size:11.5px;color:var(--mut);letter-spacing:.4px}
+  .beast .tag{display:inline-block;margin-top:6px;font-size:11px;font-weight:600;letter-spacing:1px;
+    font-family:'Space Grotesk';padding:2px 9px;border-radius:20px;border:1px solid var(--line2)}
+  .rt-common{color:var(--mut);border-color:var(--line2)}
+  .rt-uncommon{color:var(--silver);border-color:#4a4a54}
+  .rt-rare{color:var(--silver-hi);border-color:var(--silver);background:rgba(199,204,214,.06)}
+  .rt-epic{color:var(--gold);border-color:var(--gold-dim);background:rgba(212,175,55,.08)}
+  .rt-legendary{color:var(--gold-hi);border-color:var(--gold);background:rgba(212,175,55,.14);box-shadow:0 0 18px rgba(212,175,55,.18)}
+  .shiny{position:absolute;top:8px;right:8px;font-size:10px;font-weight:700;letter-spacing:1px;color:#160f02;
+    background:linear-gradient(180deg,var(--gold-hi),var(--gold));padding:2px 7px;border-radius:6px;font-family:'Space Grotesk'}
+  .lv{position:absolute;top:8px;left:8px;font-size:11px;color:var(--silver);background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:6px;padding:1px 7px}
+
+  /* auth modal */
+  .backdrop{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;
+    background:rgba(6,6,8,.7);backdrop-filter:blur(6px)}
+  .modal{width:100%;max-width:400px}
+  .modal h1{font-size:24px;margin:0 0 4px}
+  .modal p.sub{color:var(--mut);margin:0 0 18px;font-size:14px}
+  .modal form p{margin:0 0 14px}
+  .modal .helptext,.modal ul{color:var(--dim);font-size:12px;line-height:1.4}
+  .errornote,.errorlist{color:var(--red);font-size:13px;list-style:none;padding:0;margin:0 0 12px}
+  .grow{flex:1}
+  .stack{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 </style>
 </head>
 <body>
-<header>
-  <span class="logo">WAVEBEASTS</span>
-  <nav>
-    {% if user.is_authenticated %}
-      <a href="/me/">My Profile</a>
-      <form method="post" action="/logout/" style="display:inline"><input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}"><button class="ghost" type="submit">Sign out</button></form>
-    {% else %}
-      <a href="/login/">Sign in</a><a href="/signup/">Create account</a>
-    {% endif %}
-  </nav>
-</header>
+{% block page %}
+{% block nav %}
+<nav class="top">
+  <a href="{% if user.is_authenticated %}/me/{% else %}/{% endif %}" class="brand wordmark">WAVEBEASTS</a>
+  {% if user.is_authenticated %}
+  <div class="links">
+    <a href="/me/" class="{% if nav == 'beastiary' %}active{% endif %}">Beastiary</a>
+    <a href="/trade/" class="{% if nav == 'trade' %}active{% endif %}">Trade</a>
+    <a href="/battle/" class="{% if nav == 'battle' %}active{% endif %}">Battle</a>
+    <a href="/nodes/" class="{% if nav == 'nodes' %}active{% endif %}">Nodes</a>
+  </div>
+  <div class="right">
+    <span class="chip silver">Shards <b>{{ wb_wallet.shards }}</b></span>
+    <span class="chip">Cores <b>{{ wb_wallet.cores }}</b></span>
+    <form method="post" action="/logout/" style="display:inline;margin:0">{% csrf_token %}<button class="btn sec sm" type="submit">Sign out</button></form>
+  </div>
+  {% else %}
+  <div class="right">
+    <a class="btn sec sm" href="/login/">Sign in</a>
+    <a class="btn sm" href="/signup/">Create account</a>
+  </div>
+  {% endif %}
+</nav>
+{% endblock %}
 <main>{% block content %}{% endblock %}</main>
+{% endblock %}
 </body>
 </html>

@@ -1,23 +1,33 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="panel">
-  <h1>Turn the world into monsters.</h1>
-  <p class="muted">WaveBeasts is a scan-to-creature game. Point sensors at the real world — a barcode, a QR
-  code, a photo, WiFi, Bluetooth, RF, temperature, light — and generate collectible <b>WaveBeasts</b>. The
-  richer your sensor sweep, the rarer the catch.</p>
-  <p>Run the engine anywhere (a Raspberry Pi, a laptop, your Android phone) and link <b>listener nodes</b>
-  to your account: each node feeds rate-limited sensor snapshots to your profile, so your collection grows
-  even while you go about your day. Trade and battle other trainers.</p>
-  {% if user.is_authenticated %}
-    <p><a href="/me/"><button>Go to my profile →</button></a></p>
-  {% else %}
-    <p><a href="/signup/"><button>Create an account →</button></a> &nbsp; <a href="/login/">or sign in</a></p>
-  {% endif %}
-</div>
-<div class="panel">
-  <h2>How it works</h2>
-  <p class="muted">1. Create an account. 2. Add a node (your phone, a Pi, EDI/Bishop, or any PC running the
-  WaveBeast engine). 3. The node uploads sensor snapshots on a timer — speed it up by spending in-game
-  currency. 4. Catch, collect, trade, and battle.</p>
+<section style="text-align:center;padding:40px 0 30px">
+  <div class="wordmark" style="font-family:'Space Grotesk';font-weight:700;font-size:clamp(38px,9vw,74px);letter-spacing:8px;line-height:1">WAVEBEASTS</div>
+  <p style="max-width:620px;margin:18px auto 0;color:var(--silver);font-size:18px">
+    Turn the real world into monsters. Scan signals — a barcode, a photo, WiFi, radio, temperature, light —
+    and generate collectible <b style="color:var(--gold)">WaveBeasts</b>. The richer your sensor sweep, the rarer the catch.
+  </p>
+  <div class="stack" style="justify-content:center;margin-top:26px">
+    {% if user.is_authenticated %}
+      <a class="btn" href="/me/">Enter your beastiary</a>
+    {% else %}
+      <a class="btn" href="/signup/">Create an account</a>
+      <a class="btn sec" href="/login/">Sign in</a>
+    {% endif %}
+  </div>
+</section>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:20px">
+  <div class="card">
+    <div class="section-label" style="margin-top:0">Scan anything</div>
+    <p class="muted" style="margin:0">Barcodes and QR are the classics, but any signal counts — WiFi, Bluetooth, RF, IR, NFC, magnetic fields, light, sound, motion, GPS. Stack more sensors for better odds.</p>
+  </div>
+  <div class="card">
+    <div class="section-label" style="margin-top:0">Listener nodes</div>
+    <p class="muted" style="margin:0">Run WaveBeast on your phone, a Raspberry Pi, or any PC and link it to your account. Nodes feed rate-limited snapshots to your profile — speed the cadence with in-game currency.</p>
+  </div>
+  <div class="card">
+    <div class="section-label" style="margin-top:0">Trade &amp; battle</div>
+    <p class="muted" style="margin:0">Build a beastiary, list beasts on the market, and fight 3-on-3. A given code always yields the same species — so codes are shareable, collectible, comparable.</p>
+  </div>
 </div>
 {% endblock %}

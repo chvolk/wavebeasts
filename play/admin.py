@@ -1,5 +1,7 @@
 from django.contrib import admin
 
-from .models import InventoryItem, Node, OwnedBeast, Snapshot, Wallet
+from .models import (BattleRecord, InventoryItem, Node, OwnedBeast, Snapshot,
+                     TradeListing, TradeOffer, Wallet)
 
-admin.site.register([Wallet, InventoryItem, Node, Snapshot, OwnedBeast])
+admin.site.register([Wallet, InventoryItem, Node, Snapshot, OwnedBeast,
+                     TradeListing, TradeOffer, BattleRecord])

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Battle · WaveBeasts{% endblock %}
+{% block content %}
+<h1 style="margin:0 0 4px">Battle</h1>
+<p class="muted" style="margin:0 0 18px">Pick a team of up to three, then find a match. Win to earn shards.</p>
+
+{% if result %}
+<div class="card" style="border-color:{% if result.outcome == 'win' %}var(--gold){% elif result.outcome == 'loss' %}var(--red-dim){% else %}var(--line2){% endif %}">
+  {% if result.error %}
+    <b style="color:var(--red)">{{ result.error }}</b>
+  {% else %}
+    <div class="stack" style="justify-content:space-between">
+      <h2 style="margin:0;color:{% if result.outcome == 'win' %}var(--gold-hi){% elif result.outcome == 'loss' %}var(--red){% else %}var(--silver){% endif %}">
+        {% if result.outcome == 'win' %}Victory{% elif result.outcome == 'loss' %}Defeat{% else %}Draw{% endif %}</h2>
+      <span class="muted">vs {{ result.opponent }} · {{ result.turns }} turns{% if result.reward %} · +{{ result.reward }} shards{% endif %}</span>
+    </div>
+    <pre style="margin:12px 0 0;max-height:220px">{% for line in result.log %}{{ line }}
+{% endfor %}</pre>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:16px">
+  <div class="section-label" style="margin-top:0">Your team {% if team_ids %}· {{ team_ids|length }}/3{% endif %}</div>
+  {% if owned %}
+  <form method="post" action="/battle/team">{% csrf_token %}
+    <div class="beasts">
+      {% for b in owned %}
+      <label class="beast" style="cursor:pointer;display:block">
+        <input type="checkbox" name="beast_ids" value="{{ b.id }}" {% if b.id|stringformat:'s' in team_ids %}checked{% endif %}
+               style="width:auto;position:absolute;top:8px;left:8px">
+        <span class="lv" style="left:auto;right:8px">Lv {{ b.level }}</span>
+        <div class="stage"><img src="/sprite/{{ b.id }}.png" alt=""></div>
+        <div class="nm">{{ b.name }}</div>
+        <span class="tag rt-{{ b.rarity }}">{{ b.rarity }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <div class="stack" style="margin-top:14px">
+      <button class="btn sec" type="submit">Save team</button>
+    </div>
+  </form>
+  <form method="post" action="/battle/fight" style="margin-top:10px">{% csrf_token %}
+    <button class="btn" type="submit">Find a battle</button>
+  </form>
+  {% else %}
+  <p class="muted" style="margin:0">Catch some beasts first, then build your team here.</p>
+  {% endif %}
+</div>
+
+{% if records %}
+<div class="section-label">Recent battles</div>
+<div class="card" style="padding:6px 18px">
+<table>
+  <tr><th>Result</th><th>Opponent</th><th>Turns</th><th>Reward</th></tr>
+  {% for r in records %}
+  <tr>
+    <td style="color:{% if r.result == 'win' %}var(--gold){% elif r.result == 'loss' %}var(--red){% else %}var(--silver){% endif %};text-transform:capitalize">{{ r.result }}</td>
+    <td>{{ r.opponent }}</td><td>{{ r.turns }}</td><td>{% if r.reward %}+{{ r.reward }}{% else %}—{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% endif %}
+{% endblock %}

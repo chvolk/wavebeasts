@@ -1,12 +1,22 @@
 {% extends "base.html" %}
 {% block title %}Create account · WaveBeasts{% endblock %}
-{% block content %}
-<div class="panel" style="max-width:420px">
-  <h1>Create account</h1>
-  <form method="post">{% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Create account</button>
-  </form>
-  <p class="muted">Already have one? <a href="/login/">Sign in</a>.</p>
+{% block page %}
+<div class="backdrop">
+  <div class="card modal">
+    <a href="/" class="wordmark" style="font-family:'Space Grotesk';font-weight:700;font-size:20px;letter-spacing:4px;display:block;text-align:center;margin-bottom:16px">WAVEBEASTS</a>
+    <h1>Create account</h1>
+    <p class="sub">Start your beastiary. It's free.</p>
+    {% if form.non_field_errors %}<div class="errornote">{{ form.non_field_errors }}</div>{% endif %}
+    <form method="post">{% csrf_token %}
+      <p><label>Username</label>{{ form.username }}
+        {% if form.username.errors %}<ul class="errorlist">{% for e in form.username.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}</p>
+      <p><label>Password</label>{{ form.password1 }}
+        {% if form.password1.errors %}<ul class="errorlist">{% for e in form.password1.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}</p>
+      <p><label>Confirm password</label>{{ form.password2 }}
+        {% if form.password2.errors %}<ul class="errorlist">{% for e in form.password2.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}</p>
+      <button class="btn" style="width:100%;justify-content:center" type="submit">Create account</button>
+    </form>
+    <p class="sub" style="text-align:center;margin:16px 0 0">Already have one? <a href="/login/">Sign in</a></p>
+  </div>
 </div>
 {% endblock %}

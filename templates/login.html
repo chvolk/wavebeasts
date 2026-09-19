@@ -1,12 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Sign in · WaveBeasts{% endblock %}
-{% block content %}
-<div class="panel" style="max-width:380px">
-  <h1>Sign in</h1>
-  <form method="post">{% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Sign in</button>
-  </form>
-  <p class="muted">No account? <a href="/signup/">Create one</a>.</p>
+{% block page %}
+<div class="backdrop">
+  <div class="card modal">
+    <a href="/" class="wordmark" style="font-family:'Space Grotesk';font-weight:700;font-size:20px;letter-spacing:4px;display:block;text-align:center;margin-bottom:16px">WAVEBEASTS</a>
+    <h1>Sign in</h1>
+    <p class="sub">Welcome back, trainer.</p>
+    {% if form.errors %}<div class="errornote">Wrong username or password.</div>{% endif %}
+    <form method="post">{% csrf_token %}
+      <p><label>Username</label>{{ form.username }}</p>
+      <p><label>Password</label>{{ form.password }}</p>
+      <button class="btn" style="width:100%;justify-content:center" type="submit">Sign in</button>
+    </form>
+    <p class="sub" style="text-align:center;margin:16px 0 0">No account? <a href="/signup/">Create one</a></p>
+  </div>
 </div>
 {% endblock %}

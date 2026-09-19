@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Trade · WaveBeasts{% endblock %}
+{% block content %}
+<h1 style="margin:0 0 4px">Trade market</h1>
+<p class="muted" style="margin:0 0 18px">List a beast, browse the market, and offer one of yours in return. Accepted trades swap ownership instantly.</p>
+
+<div class="card">
+  <div class="section-label" style="margin-top:0">List a beast for trade</div>
+  {% if tradeable %}
+  <form method="post" action="/trade/list" class="stack">{% csrf_token %}
+    <select name="beast_id" class="grow" style="max-width:320px">
+      {% for b in tradeable %}<option value="{{ b.id }}">{{ b.name }} · {{ b.rarity }} · Lv {{ b.level }}</option>{% endfor %}
+    </select>
+    <input name="note" class="grow" maxlength="200" placeholder="optional note — what you're after">
+    <button class="btn" type="submit">List it</button>
+  </form>
+  {% else %}<p class="muted" style="margin:0">No un-listed owned beasts to trade yet.</p>{% endif %}
+</div>
+
+{% if incoming %}
+<div class="section-label">Incoming offers</div>
+<div class="card" style="padding:6px 18px">
+<table>
+  <tr><th>They offer</th><th>For your</th><th></th></tr>
+  {% for o in incoming %}
+  <tr>
+    <td>{{ o.from_user.username }}: <b>{{ o.offered_beast.name }}</b> ({{ o.offered_beast.rarity }} Lv{{ o.offered_beast.level }})</td>
+    <td>{{ o.listing.beast.name }} ({{ o.listing.beast.rarity }})</td>
+    <td style="text-align:right;white-space:nowrap">
+      <form method="post" action="/trade/offer/{{ o.id }}/accept" style="display:inline">{% csrf_token %}<button class="btn sm" type="submit">Accept</button></form>
+      <form method="post" action="/trade/offer/{{ o.id }}/decline" style="display:inline">{% csrf_token %}<button class="btn sec sm" type="submit">Decline</button></form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% endif %}
+
+<div class="section-label">Your open listings</div>
+{% if my_listings %}
+<div class="beasts">
+  {% for l in my_listings %}
+  <div class="beast">
+    <span class="lv">Lv {{ l.beast.level }}</span>
+    <div class="stage"><img src="/sprite/{{ l.beast.id }}.png" alt=""></div>
+    <div class="nm">{{ l.beast.name }}</div>
+    <span class="tag rt-{{ l.beast.rarity }}">{{ l.beast.rarity }}</span>
+    {% if l.note %}<div class="dim" style="font-size:11px;margin-top:4px">"{{ l.note }}"</div>{% endif %}
+    <div style="font-size:11px;margin-top:4px" class="muted">{{ l.offers.count }} offer(s)</div>
+    <form method="post" action="/trade/{{ l.id }}/unlist" style="margin-top:6px">{% csrf_token %}<button class="btn sec sm" type="submit">Unlist</button></form>
+  </div>
+  {% endfor %}
+</div>
+{% else %}<div class="card muted">You have no open listings.</div>{% endif %}
+
+<div class="section-label">Market</div>
+{% if market %}
+<div class="beasts">
+  {% for l in market %}
+  <div class="beast">
+    {% if l.beast.shiny %}<span class="shiny">SHINY</span>{% endif %}
+    <span class="lv">Lv {{ l.beast.level }}</span>
+    <div class="stage"><img src="/sprite/{{ l.beast.id }}.png" alt=""></div>
+    <div class="nm">{{ l.beast.name }}</div>
+    <div class="ty">{{ l.beast.types_display }}</div>
+    <span class="tag rt-{{ l.beast.rarity }}">{{ l.beast.rarity }}</span>
+    <div class="dim" style="font-size:11px;margin-top:4px">by {{ l.user.username }}{% if l.note %} — "{{ l.note }}"{% endif %}</div>
+    {% if tradeable %}
+    <form method="post" action="/trade/{{ l.id }}/offer" class="stack" style="margin-top:8px;gap:6px">{% csrf_token %}
+      <select name="beast_id" class="grow" style="padding:6px;font-size:12px">
+        {% for b in tradeable %}<option value="{{ b.id }}">{{ b.name }} ({{ b.rarity }})</option>{% endfor %}
+      </select>
+      <button class="btn sm" type="submit">Offer</button>
+    </form>
+    {% else %}<div class="dim" style="font-size:11px;margin-top:6px">catch a beast to offer</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}<div class="card muted">No one else is trading yet. Check back soon.</div>{% endif %}
+{% endblock %}

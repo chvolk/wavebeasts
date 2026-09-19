@@ -10,10 +10,11 @@ def gen_token():
 
 
 class Wallet(models.Model):
-    """Per-account soft/hard currency."""
+    """Per-account soft/hard currency + the chosen battle team (up to 3 owned beast ids)."""
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="wallet")
     shards = models.IntegerField(default=50)
     cores = models.IntegerField(default=0)
+    team_ids = models.JSONField(default=list)
 
     def __str__(self):
         return f"{self.user} wallet"
@@ -33,8 +34,8 @@ class Node(models.Model):
     It need not run the full engine — just sensors -> ScanBundle -> POST /api/snapshot with its token."""
     KIND = [("phone", "phone"), ("edi", "edi"), ("bishop", "bishop"), ("pi", "pi"), ("pc", "pc")]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="nodes")
-    name = models.CharField(max_length=64)
-    kind = models.CharField(max_length=16, choices=KIND, default="pc")
+    name = models.CharField(max_length=256)  # free text, emoji allowed
+    kind = models.CharField(max_length=16, default="node")
     token = models.CharField(max_length=64, unique=True, default=gen_token)
     rate_limit_sec = models.IntegerField(default=300)  # base snapshot cadence (anti-spam)
     boost_interval_sec = models.IntegerField(default=20)  # cadence while boosted
@@ -84,3 +85,48 @@ class OwnedBeast(models.Model):
 
     class Meta:
         ordering = ["-caught_at"]
+
+    @property
+    def types_display(self):
+        return " / ".join((self.species_json or {}).get("types", []))
+
+    @property
+    def tribe(self):
+        return (self.species_json or {}).get("tribe", "")
+
+
+class TradeListing(models.Model):
+    """An owned beast a player has put up for trade on the market."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="listings")
+    beast = models.OneToOneField(OwnedBeast, on_delete=models.CASCADE, related_name="listing")
+    note = models.CharField(max_length=200, blank=True)
+    is_open = models.BooleanField(default=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created"]
+
+
+class TradeOffer(models.Model):
+    """Another player's offer of one of their beasts for a listing."""
+    STATUS = [("pending", "pending"), ("accepted", "accepted"), ("declined", "declined")]
+    listing = models.ForeignKey(TradeListing, on_delete=models.CASCADE, related_name="offers")
+    from_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="offers")
+    offered_beast = models.ForeignKey(OwnedBeast, on_delete=models.CASCADE, related_name="offered_in")
+    status = models.CharField(max_length=10, choices=STATUS, default="pending")
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created"]
+
+
+class BattleRecord(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="battles")
+    opponent = models.CharField(max_length=64)
+    result = models.CharField(max_length=8)  # win|loss|draw
+    turns = models.IntegerField(default=0)
+    reward = models.IntegerField(default=0)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created"]

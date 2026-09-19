@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Beastiary · WaveBeasts{% endblock %}
+{% block content %}
+<div class="stack" style="justify-content:space-between">
+  <h1 style="margin:0">Beastiary</h1>
+  <div class="stack">
+    {% for it in items %}<span class="chip">{{ it.item_id }} <b>{{ it.qty }}</b></span>{% endfor %}
+  </div>
+</div>
+
+<div class="section-label">Collection · {{ owned|length }}</div>
+{% if owned %}
+<div class="beasts">
+  {% for b in owned %}
+  <div class="beast">
+    {% if b.shiny %}<span class="shiny">SHINY</span>{% endif %}
+    <span class="lv">Lv {{ b.level }}</span>
+    <div class="stage"><img src="/sprite/{{ b.id }}.png" alt="" loading="lazy"></div>
+    <div class="nm">{{ b.name }}</div>
+    <div class="ty">{{ b.types_display }} · {{ b.tribe }}</div>
+    <span class="tag rt-{{ b.rarity }}">{{ b.rarity }}</span>
+    {% if b.id in listed_ids %}<div class="dim" style="font-size:11px;margin-top:6px">listed for trade</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card muted">No beasts caught yet. Add a node and start sweeping, or play the standalone app.</div>
+{% endif %}
+
+{% if wild %}
+<div class="section-label">Wild sightings · catch them · {{ wild|length }}</div>
+<div class="beasts">
+  {% for b in wild %}
+  <div class="beast">
+    {% if b.shiny %}<span class="shiny">SHINY</span>{% endif %}
+    <div class="stage" style="opacity:.85"><img src="/sprite/{{ b.id }}.png" alt="" loading="lazy"></div>
+    <div class="nm">{{ b.name }}</div>
+    <div class="ty">{{ b.types_display }}</div>
+    <span class="tag rt-{{ b.rarity }}">{{ b.rarity }}</span>
+    <form method="post" action="/beast/{{ b.id }}/catch" class="stack" style="margin-top:8px;gap:6px">{% csrf_token %}
+      <select name="drive" class="grow" style="padding:7px">
+        <option value="spark_drive">Spark</option><option value="pulse_drive">Pulse</option>
+        <option value="surge_drive">Surge</option><option value="nova_drive">Nova</option>
+      </select>
+      <button class="btn sm" type="submit">Throw</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

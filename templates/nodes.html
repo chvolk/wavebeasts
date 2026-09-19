@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Nodes · WaveBeasts{% endblock %}
+{% block content %}
+<h1 style="margin:0 0 4px">Listener nodes</h1>
+<p class="muted" style="margin:0 0 18px">Each node feeds rate-limited sensor snapshots to your account. Boost a node with cores to raise its cadence.</p>
+
+<div class="card">
+  <form method="post" action="/nodes/new" class="stack">{% csrf_token %}
+    <div class="grow"><label>Node name</label>
+      <input name="name" maxlength="256" placeholder="name it anything — the kitchen Pi, my phone, backyard sensor…" required></div>
+    <div style="align-self:flex-end"><button class="btn" type="submit">Add node</button></div>
+  </form>
+</div>
+
+{% if nodes %}
+<div class="section-label">Your nodes</div>
+<div class="card" style="padding:6px 18px">
+<table>
+  <tr><th>Name</th><th>Token</th><th>Next snapshot</th><th></th></tr>
+  {% for n in nodes %}
+  <tr>
+    <td style="max-width:280px;word-break:break-word">{{ n.name }}</td>
+    <td><code>{{ n.token }}</code></td>
+    <td>{% if n.seconds_until_ready %}<span class="muted">{{ n.seconds_until_ready }}s</span>{% else %}<span style="color:var(--gold)">ready</span>{% endif %}
+        {% if n.boosted_until %}<span class="dim">· boosted</span>{% endif %}</td>
+    <td style="text-align:right;white-space:nowrap">
+      <form method="post" action="/nodes/{{ n.id }}/boost" style="display:inline">{% csrf_token %}<button class="btn sec sm" type="submit">Boost · 1 core</button></form>
+      <form method="post" action="/nodes/{{ n.id }}/delete" style="display:inline">{% csrf_token %}<button class="btn danger sm" type="submit">Remove</button></form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% else %}
+<div class="card muted" style="margin-top:14px">No nodes yet — add one above.</div>
+{% endif %}
+
+<div class="section-label">Connect a node</div>
+<div class="card">
+  <p class="muted" style="margin-top:0">A node just assembles a ScanBundle and POSTs it with its token. It doesn't need the full engine:</p>
+  <pre>curl -X POST {{ request.scheme }}://{{ request.get_host }}/api/snapshot \
+  -H "X-WB-Node-Token: &lt;your node token&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{"schema":"wavebeast.scanbundle","v":1,"signals":[
+        {"kind":"wifi","strength":0.7,"value":{"rssi":-50}},
+        {"kind":"scalar","strength":0.6,"value":{"metric":"lux","n":300}} ]}'</pre>
+  <p class="dim" style="margin-bottom:0">Or run the standalone WaveBeast app / the <code>wavebeast-node</code> script and paste the token.</p>
+</div>
+{% endblock %}

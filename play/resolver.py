@@ -18,3 +18,10 @@ def render(palette, recipe, shiny: bool) -> bytes:
     r = requests.post(f"{RESOLVER}/render", json={"palette": palette, "recipe": recipe, "shiny": shiny}, timeout=15)
     r.raise_for_status()
     return r.content
+
+
+def battle_auto(team_a: list, team_b: list) -> dict:
+    """team_* = [{"species": {...}, "individual": {...}}, ...]. Returns {winner, turns, log}."""
+    r = requests.post(f"{RESOLVER}/battle/auto", json={"a": team_a, "b": team_b}, timeout=20)
+    r.raise_for_status()
+    return r.json()

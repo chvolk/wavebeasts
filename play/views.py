@@ -481,6 +481,61 @@ def api_import(request):
 
 
 @csrf_exempt
+def api_shop(request):
+    """The item catalog (node-token auth). Prices come from the engine so the site owns them."""
+    node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
+    if not node:
+        return JsonResponse({"error": "bad node token"}, status=403)
+    try:
+        return JsonResponse(resolver.shop())
+    except Exception as e:
+        return JsonResponse({"error": f"resolver unavailable: {e}"}, status=502)
+
+
+@csrf_exempt
+def api_buy(request):
+    """Buy an item with account currency (node-token auth). Server-authoritative: the price is read from
+    the engine catalog and the balance is checked on the server, so nothing about the cost is client-set.
+    Buying is part of the free base loop (drives to catch, food to train)."""
+    node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
+    if not node:
+        return JsonResponse({"error": "bad node token"}, status=403)
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"error": "bad json"}, status=400)
+    item_id = str(data.get("item_id") or "")
+    try:
+        qty = max(1, min(99, int(data.get("qty", 1))))
+    except (TypeError, ValueError):
+        qty = 1
+    try:
+        catalog = resolver.shop().get("items", [])
+    except Exception as e:
+        return JsonResponse({"error": f"resolver unavailable: {e}"}, status=502)
+    item = next((i for i in catalog if i.get("id") == item_id), None)
+    if not item:
+        return JsonResponse({"error": "unknown item"}, status=404)
+    kind = item.get("cost_kind", "shards")
+    cost = int(item.get("cost_amt", 0)) * qty
+    with transaction.atomic():
+        w = Wallet.objects.select_for_update().get_or_create(user=node.user)[0]
+        balance = w.cores if kind == "cores" else w.shards
+        if balance < cost:
+            return JsonResponse({"error": f"not enough {kind}", "need": cost, "have": balance}, status=409)
+        if kind == "cores":
+            w.cores -= cost
+        else:
+            w.shards -= cost
+        w.save()
+        inv, _ = InventoryItem.objects.get_or_create(user=node.user, item_id=item_id)
+        inv.qty += qty
+        inv.save()
+    return JsonResponse({"ok": True, "item_id": item_id, "qty": inv.qty, "spent": cost, "cost_kind": kind,
+                         "shards": w.shards, "cores": w.cores})
+
+
+@csrf_exempt
 def api_beasts(request):
     """List the account's owned beasts (node-token auth). Free to read — this is how a companion app
     shows your collection and picks a buddy. Sprites are at /sprite/<id>.png (public)."""

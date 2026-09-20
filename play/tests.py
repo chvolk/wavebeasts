@@ -1,4 +1,5 @@
 import json
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -121,3 +122,43 @@ class TieringTests(TestCase):
         self.assertIn("paid", (self.client.session.get("last_battle") or {}).get("error", "").lower())
         self.client.post("/ladder/enter")
         self.assertIn("paid", (self.client.session.get("ladder_msg") or "").lower())
+
+
+@override_settings(ALLOWED_HOSTS=["testserver"])
+class BuyTests(TestCase):
+    CATALOG = {"items": [{"id": "pulse_drive", "cost_kind": "shards", "cost_amt": 30}]}
+
+    def setUp(self):
+        self.user = User.objects.create_user("buyer", password="x")
+        self.wallet = Wallet.objects.get_or_create(user=self.user)[0]  # 50 shards by default
+        self.node = Node.objects.create(user=self.user, name="app")
+
+    def _buy(self, item_id, qty=1):
+        return self.client.post("/api/buy", data=json.dumps({"item_id": item_id, "qty": qty}),
+                                content_type="application/json", HTTP_X_WB_NODE_TOKEN=self.node.token)
+
+    @patch("play.resolver.shop")
+    def test_buy_deducts_server_side_price(self, mshop):
+        mshop.return_value = self.CATALOG
+        r = self._buy("pulse_drive")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["shards"], 20)  # 50 - 30, computed on the server
+        self.wallet.refresh_from_db()
+        self.assertEqual(self.wallet.shards, 20)
+
+    @patch("play.resolver.shop")
+    def test_buy_rejects_when_short(self, mshop):
+        mshop.return_value = self.CATALOG
+        self.wallet.shards = 5
+        self.wallet.save()
+        self.assertEqual(self._buy("pulse_drive").status_code, 409)
+
+    @patch("play.resolver.shop")
+    def test_buy_cost_scales_with_qty(self, mshop):
+        mshop.return_value = self.CATALOG
+        self.assertEqual(self._buy("pulse_drive", qty=2).status_code, 409)  # 60 > 50
+
+    @patch("play.resolver.shop")
+    def test_buy_unknown_item(self, mshop):
+        mshop.return_value = self.CATALOG
+        self.assertEqual(self._buy("cheat_item").status_code, 404)

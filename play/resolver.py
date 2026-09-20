@@ -24,6 +24,14 @@ def render(palette, recipe, shiny: bool) -> bytes:
     return r.content
 
 
+def shop() -> dict:
+    """The item catalog (id, name, cost_kind, cost_amt, ...) — the single source of truth for prices, so
+    the site validates purchases against it rather than trusting a client."""
+    r = requests.get(f"{RESOLVER}/economy/shop", timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+
 def battle_auto(team_a: list, team_b: list) -> dict:
     """team_* = [{"species": {...}, "individual": {...}}, ...]. Returns {winner, turns, log}."""
     r = requests.post(f"{RESOLVER}/battle/auto", json={"a": team_a, "b": team_b}, timeout=20)

@@ -29,6 +29,11 @@ def _wallet(user):
     return w
 
 
+def _paid(user):
+    """Paid gate for premium features (trade, boosts, buddy, upload). Nodes + snapshots stay free."""
+    return _wallet(user).subscribed
+
+
 # ---- public / auth -------------------------------------------------------------------------------
 
 def landing(request):
@@ -146,6 +151,9 @@ def node_create(request):
 @login_required
 def node_boost(request, node_id):
     node = get_object_or_404(Node, id=node_id, user=request.user)
+    if not _paid(request.user):
+        request.session["nodes_msg"] = "Node boosts are a paid feature."
+        return redirect("nodes")
     w = _wallet(request.user)
     if w.cores >= BOOST_COST_CORES:
         w.cores -= BOOST_COST_CORES
@@ -179,6 +187,9 @@ def trade(request):
 @login_required
 def trade_list_beast(request):
     if request.method == "POST":
+        if not _paid(request.user):
+            request.session["trade_msg"] = "Trading is a paid feature."
+            return redirect("trade")
         beast = get_object_or_404(OwnedBeast, id=request.POST.get("beast_id"), user=request.user, status="owned")
         if not beast.verified:
             request.session["trade_msg"] = "Only verified beasts (caught through a node) can be traded."
@@ -195,6 +206,9 @@ def trade_unlist(request, listing_id):
 
 @login_required
 def trade_offer(request, listing_id):
+    if not _paid(request.user):
+        request.session["trade_msg"] = "Trading is a paid feature."
+        return redirect("trade")
     listing = get_object_or_404(TradeListing, id=listing_id, is_open=True)
     beast = get_object_or_404(OwnedBeast, id=request.POST.get("beast_id"), user=request.user, status="owned")
     if not beast.verified:
@@ -206,6 +220,9 @@ def trade_offer(request, listing_id):
 
 @login_required
 def trade_accept(request, offer_id):
+    if not _paid(request.user):
+        request.session["trade_msg"] = "Trading is a paid feature."
+        return redirect("trade")
     offer = get_object_or_404(TradeOffer, id=offer_id, listing__user=request.user, status="pending")
     with transaction.atomic():
         listing = offer.listing
@@ -496,6 +513,7 @@ def api_buddy_slot(request):
         return JsonResponse({"error": "a buddy must be a verified beast (caught through a node)"}, status=403)
     b, _ = Buddy.objects.get_or_create(user=node.user)
     b.beast = beast
+    b.carrier = node  # this device is now carrying the buddy
     b.slotted_at = timezone.now()
     b.last_event_at = timezone.now()  # start the away-event clock fresh on slot
     b.save()
@@ -511,6 +529,7 @@ def api_buddy_care(request):
     b, _ = Buddy.objects.get_or_create(user=node.user)
     if not b.beast_id:
         return JsonResponse({"error": "no buddy slotted"}, status=409)
+    b.carrier = node  # caring for it from this device → it's the carrier
     try:
         data = json.loads(request.body.decode("utf-8"))
     except Exception:

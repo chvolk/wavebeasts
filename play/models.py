@@ -37,6 +37,7 @@ class Buddy(models.Model):
     only ever calls actions and displays what the site returns — so none of it is cheatable."""
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="buddy")
     beast = models.ForeignKey("OwnedBeast", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    carrier = models.ForeignKey("Node", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")  # which device carries it now (UX/anchor)
     mood = models.IntegerField(default=60)          # 0-100
     relationship = models.IntegerField(default=0)   # 0-100; 100 = "loves you"
     hunger = models.IntegerField(default=60)        # vitals; higher is better, decay over time

@@ -83,6 +83,7 @@ class BuddyApiTests(TestCase):
                               content_type="application/json", **self._hdr())
         self.assertEqual(r2.status_code, 200)
         self.assertEqual(r2.json()["buddy"]["beast"]["id"], ver.id)
+        self.assertEqual(r2.json()["buddy"]["carrier"]["id"], self.node.id)  # this device is the carrier
 
     def test_paywall_blocks_unsubscribed(self):
         self.wallet.subscribed = False

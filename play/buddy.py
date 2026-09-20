@@ -173,6 +173,7 @@ def beast_summary(beast):
 def state(buddy):
     return {
         "beast": beast_summary(buddy.beast),
+        "carrier": ({"id": buddy.carrier_id, "name": buddy.carrier.name} if buddy.carrier_id else None),
         "mood": buddy.mood,
         "relationship": buddy.relationship,
         "relationship_label": relationship_label(buddy.relationship),

@@ -22,6 +22,8 @@ RARITY_RESIST = {"common": 1.0, "uncommon": 0.85, "rare": 0.65, "epic": 0.45, "l
 BOOST_COST_CORES = 1
 BOOST_DURATION_SEC = 600
 GYM_CODES = ["wb-gym-ember", "wb-gym-tide", "wb-gym-stone"]
+FREE_NODE_LIMIT = 1     # a free account can feed itself from one external sensor rig
+PAID_NODE_LIMIT = 12    # a paid account's sensor fleet cap
 
 
 def _wallet(user):
@@ -143,7 +145,12 @@ def nodes(request):
 def node_create(request):
     if request.method == "POST":
         name = (request.POST.get("name") or "").strip()[:256]
-        if name:
+        limit = PAID_NODE_LIMIT if _paid(request.user) else FREE_NODE_LIMIT
+        if request.user.nodes.count() >= limit:
+            request.session["nodes_msg"] = (
+                f"Node limit reached ({limit}). Upgrade for up to {PAID_NODE_LIMIT} nodes."
+                if not _paid(request.user) else f"Node limit reached ({PAID_NODE_LIMIT}).")
+        elif name:
             Node.objects.create(user=request.user, name=name)
     return redirect("nodes")
 
@@ -300,6 +307,9 @@ def battle(request):
 
 @login_required
 def ladder_enter(request):
+    if not _paid(request.user):
+        request.session["ladder_msg"] = "The async ladder is a paid feature."
+        return redirect("battle")
     fighters = _team_for(request.user)
     if not fighters:
         request.session["ladder_msg"] = "Set a team of up to 3 beasts first."
@@ -313,6 +323,9 @@ def ladder_enter(request):
 
 @login_required
 def ladder_run(request):
+    if not _paid(request.user):
+        request.session["ladder_msg"] = "The async ladder is a paid feature."
+        return redirect("battle")
     lt = LadderTeam.objects.filter(user=request.user).first()
     if not lt or not lt.fighters:
         request.session["ladder_msg"] = "Enter the ladder first."
@@ -349,6 +362,9 @@ def set_team(request):
 
 @login_required
 def battle_fight(request):
+    if not _paid(request.user):
+        request.session["last_battle"] = {"error": "Battles are a paid feature."}
+        return redirect("battle")
     my_team = _team_for(request.user)
     if not my_team:
         request.session["last_battle"] = {"error": "Set a team of up to 3 beasts first."}

@@ -15,7 +15,9 @@ class Wallet(models.Model):
     shards = models.IntegerField(default=50)
     cores = models.IntegerField(default=0)
     team_ids = models.JSONField(default=list)
-    subscribed = models.BooleanField(default=True)  # faked-on for now; gates worldwide upload/features
+    # Free tier by default. Paid unlocks the web-service layer: multi-node, trading, battles, async
+    # ladder, and the Buddy system. (Existing accounts were grandfathered to paid — see migration 0009.)
+    subscribed = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.user} wallet"

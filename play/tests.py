@@ -94,3 +94,30 @@ class BuddyApiTests(TestCase):
     def test_bad_token_rejected(self):
         r = self.client.get("/api/buddy", HTTP_X_WB_NODE_TOKEN="nope")
         self.assertEqual(r.status_code, 403)
+
+
+@override_settings(ALLOWED_HOSTS=["testserver"])
+class TieringTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("free", password="x")
+        self.client.force_login(self.user)
+        self.wallet = Wallet.objects.get_or_create(user=self.user)[0]  # subscribed defaults False now
+
+    def test_free_account_capped_at_one_node(self):
+        self.client.post("/nodes/new", {"name": "rig1"})
+        self.client.post("/nodes/new", {"name": "rig2"})
+        self.assertEqual(self.user.nodes.count(), 1)
+
+    def test_paid_account_capped_at_twelve(self):
+        self.wallet.subscribed = True
+        self.wallet.save()
+        for i in range(15):
+            self.client.post("/nodes/new", {"name": f"rig{i}"})
+        self.assertEqual(self.user.nodes.count(), 12)
+
+    def test_battle_and_ladder_require_paid(self):
+        _beast(self.user)
+        self.client.post("/battle/fight")
+        self.assertIn("paid", (self.client.session.get("last_battle") or {}).get("error", "").lower())
+        self.client.post("/ladder/enter")
+        self.assertIn("paid", (self.client.session.get("ladder_msg") or "").lower())

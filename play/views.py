@@ -1,6 +1,8 @@
 import json
 import random
 
+import requests
+
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
@@ -48,9 +50,23 @@ def app_version(request):
 
 
 def app_apk(request):
-    """Branded APK download URL → redirects to the current GitHub release asset."""
-    from django.http import HttpResponseRedirect
-    return HttpResponseRedirect("https://github.com/chvolk/wavebeast/releases/latest/download/wavebeast.apk")
+    """Serve the APK from wavebeasts.com by streaming the current GitHub release asset through the site.
+    A same-origin download with a clean Content-Length avoids the cross-origin signed-URL redirect chain
+    that stalls some Android browsers (download 'starts but never finishes')."""
+    from django.http import HttpResponse, StreamingHttpResponse
+    url = "https://github.com/chvolk/wavebeast/releases/latest/download/wavebeast.apk"
+    try:
+        up = requests.get(url, stream=True, timeout=30)
+        up.raise_for_status()
+    except Exception:
+        return HttpResponse("upstream unavailable", status=502)
+    resp = StreamingHttpResponse(up.iter_content(chunk_size=65536),
+                                 content_type="application/vnd.android.package-archive")
+    if up.headers.get("Content-Length"):
+        resp["Content-Length"] = up.headers["Content-Length"]
+    resp["Content-Disposition"] = 'attachment; filename="wavebeast.apk"'
+    resp["Cache-Control"] = "no-cache"
+    return resp
 
 
 def signup(request):

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Download · WaveBeasts{% endblock %}
+{% block content %}
+{% with base="https://github.com/chvolk/wavebeast/releases/latest/download" %}
+<h1 style="margin:0 0 4px">Download WaveBeast</h1>
+<p class="muted" style="margin:0 0 20px">Run it anywhere — your phone, a PC, or a Raspberry Pi. Local play
+is free: catch, train and battle. Link this account to trade &amp; battle worldwide.</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px">
+
+  <div class="card">
+    <div class="section-label" style="margin-top:0">Android</div>
+    <p class="muted" style="margin-top:0">Phone sensors, camera, barcode &amp; QR scanning. Sideload the APK.</p>
+    <a class="btn" href="{{ base }}/wavebeast.apk">Download APK</a>
+    <p class="dim" style="font-size:12px;margin-bottom:0">Allow "install unknown apps" for your browser.</p>
+  </div>
+
+  <div class="card">
+    <div class="section-label" style="margin-top:0">Windows</div>
+    <p class="muted" style="margin-top:0">Run the exe, then it opens <code>http://localhost:8777</code>.</p>
+    <a class="btn" href="{{ base }}/wavebeast-windows-amd64.exe">Download for Windows</a>
+    <p class="dim" style="font-size:12px;margin-bottom:0">SmartScreen: More info &rsaquo; Run anyway (unsigned).</p>
+  </div>
+
+  <div class="card">
+    <div class="section-label" style="margin-top:0">macOS</div>
+    <p class="muted" style="margin-top:0">Then open <code>http://localhost:8777</code>.</p>
+    <div class="stack">
+      <a class="btn" href="{{ base }}/wavebeast-macos-arm64">Apple Silicon</a>
+      <a class="btn sec" href="{{ base }}/wavebeast-macos-amd64">Intel</a>
+    </div>
+    <p class="dim" style="font-size:12px;margin-bottom:0"><code>chmod +x</code> it; first run: right-click &rsaquo; Open.</p>
+  </div>
+
+  <div class="card">
+    <div class="section-label" style="margin-top:0">Linux &amp; Raspberry Pi</div>
+    <p class="muted" style="margin-top:0">A single static binary. <code>chmod +x</code>, run, open :8777.</p>
+    <div class="stack">
+      <a class="btn" href="{{ base }}/wavebeast-linux-amd64">x86-64</a>
+      <a class="btn sec" href="{{ base }}/wavebeast-linux-arm64">ARM64 (Pi 4/5)</a>
+      <a class="btn sec" href="{{ base }}/wavebeast-linux-armv7">ARMv7 (Pi Zero 2)</a>
+    </div>
+  </div>
+
+</div>
+
+<div class="section-label">How it works</div>
+<div class="card muted">
+  Every download is the same engine. Run it and a small web GUI is served at
+  <code>http://localhost:8777</code> — scan the world into WaveBeasts. Scans yield about once a minute.
+  Any device can act as a listener node: create a node in <a href="/me/">your profile</a>, paste its token
+  into the app's WORLD tab, and submit snapshots to grow your online beastiary. Source &amp; releases on
+  <a href="https://github.com/chvolk/wavebeast" target="_blank" rel="noopener">GitHub</a>.
+</div>
+{% endwith %}
+{% endblock %}

@@ -7,11 +7,11 @@
     and generate collectible <b style="color:var(--gold)">WaveBeasts</b>. The richer your sensor sweep, the rarer the catch.
   </p>
   <div class="stack" style="justify-content:center;margin-top:26px">
+    <a class="btn" href="/download/">Download WaveBeast</a>
     {% if user.is_authenticated %}
-      <a class="btn" href="/me/">Enter your beastiary</a>
+      <a class="btn sec" href="/me/">Enter your beastiary</a>
     {% else %}
-      <a class="btn" href="/signup/">Create an account</a>
-      <a class="btn sec" href="/login/">Sign in</a>
+      <a class="btn sec" href="/signup/">Create an account</a>
     {% endif %}
   </div>
 </section>

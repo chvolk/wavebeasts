@@ -141,6 +141,7 @@
     <a href="/trade/" class="{% if nav == 'trade' %}active{% endif %}">Trade</a>
     <a href="/battle/" class="{% if nav == 'battle' %}active{% endif %}">Battle</a>
     <a href="/nodes/" class="{% if nav == 'nodes' %}active{% endif %}">Nodes</a>
+    <a href="/download/" class="{% if nav == 'download' %}active{% endif %}">Download</a>
   </div>
   <div class="right">
     <span class="chip silver">Shards <b>{{ wb_wallet.shards }}</b></span>
@@ -149,6 +150,7 @@
   </div>
   {% else %}
   <div class="right">
+    <a class="btn sec sm" href="/download/">Download</a>
     <a class="btn sec sm" href="/login/">Sign in</a>
     <a class="btn sm" href="/signup/">Create account</a>
   </div>

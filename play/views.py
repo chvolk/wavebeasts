@@ -32,6 +32,10 @@ def landing(request):
     return render(request, "landing.html")
 
 
+def download(request):
+    return render(request, "download.html", {"nav": "download"})
+
+
 def signup(request):
     form = UserCreationForm(request.POST or None)
     if request.method == "POST" and form.is_valid():

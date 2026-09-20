@@ -13,8 +13,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
-from . import ladder, resolver
-from .models import (AsyncBattle, BattleRecord, InventoryItem, LadderTeam, Node,
+from . import buddy as buddymod, ladder, resolver
+from .models import (AsyncBattle, Buddy, BattleRecord, InventoryItem, LadderTeam, Node,
                      OwnedBeast, Snapshot, TradeListing, TradeOffer, Wallet)
 
 DRIVE_MULT = {"spark_drive": 1.0, "pulse_drive": 1.5, "surge_drive": 2.5, "nova_drive": 4.0}
@@ -445,6 +445,87 @@ def api_import(request):
     # tradeable or laddered. To get a legit tradeable copy, submit the scan via a node (site re-rolls it).
     return JsonResponse({"ok": True, "imported": imported, "skipped": skipped,
                          "note": "imported to your collection (unverified — not tradeable; submit scans via a node for verified beasts)"})
+
+
+# ---- Buddy API (paid) — the tamagotchi companion custom apps carry -------------------------------
+# All state is server-authoritative and node-token authed. Care raises vitals/mood/relationship; while
+# slotted, the buddy earns rate-limited away-events (resources/XP) — faster the more it loves you.
+
+def _buddy_auth(request):
+    """Returns (node, error_response). Node-token auth + subscription (paid) gate."""
+    node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
+    if not node:
+        return None, JsonResponse({"error": "bad node token"}, status=403)
+    if not _wallet(node.user).subscribed:
+        return None, JsonResponse({"error": "the Buddy system is a paid feature", "code": "paywall"}, status=402)
+    return node, None
+
+
+@csrf_exempt
+def api_buddy(request):
+    """GET the current buddy + any away-events accrued since the last poll (server-rolled, rate-limited)."""
+    node, err = _buddy_auth(request)
+    if err:
+        return err
+    b, _ = Buddy.objects.get_or_create(user=node.user)
+    w = _wallet(node.user)
+    buddymod.refresh(b)
+    events = buddymod.accrue_events(b, w, b.beast) if b.beast_id else []
+    if b.beast_id and b.beast:
+        b.beast.save()
+    w.save()
+    b.save()
+    return JsonResponse({"ok": True, "buddy": buddymod.state(b), "events": events,
+                         "wallet": {"shards": w.shards, "cores": w.cores}})
+
+
+@csrf_exempt
+def api_buddy_slot(request):
+    """Slot a verified owned beast as the account's one buddy."""
+    node, err = _buddy_auth(request)
+    if err:
+        return err
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"error": "bad json"}, status=400)
+    beast = OwnedBeast.objects.filter(id=data.get("beast_id"), user=node.user, status="owned").first()
+    if not beast:
+        return JsonResponse({"error": "no such owned beast"}, status=404)
+    if not beast.verified:
+        return JsonResponse({"error": "a buddy must be a verified beast (caught through a node)"}, status=403)
+    b, _ = Buddy.objects.get_or_create(user=node.user)
+    b.beast = beast
+    b.slotted_at = timezone.now()
+    b.last_event_at = timezone.now()  # start the away-event clock fresh on slot
+    b.save()
+    return JsonResponse({"ok": True, "buddy": buddymod.state(b)})
+
+
+@csrf_exempt
+def api_buddy_care(request):
+    """Apply a care action (feed/play/rest/clean/train) to the slotted buddy."""
+    node, err = _buddy_auth(request)
+    if err:
+        return err
+    b, _ = Buddy.objects.get_or_create(user=node.user)
+    if not b.beast_id:
+        return JsonResponse({"error": "no buddy slotted"}, status=409)
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"error": "bad json"}, status=400)
+    res = buddymod.apply_care(b, (data.get("action") or "").lower())
+    if res.get("error") == "cooldown":
+        b.save()
+        return JsonResponse({"error": "cooldown", "retry_after_sec": res["retry_after_sec"],
+                             "buddy": buddymod.state(b)}, status=429)
+    if res.get("error"):
+        return JsonResponse({"error": res["error"]}, status=400)
+    if b.beast:
+        b.beast.save()
+    b.save()
+    return JsonResponse({"ok": True, "result": res, "buddy": buddymod.state(b)})
 
 
 def _apply_resource(user, res):

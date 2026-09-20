@@ -30,6 +30,27 @@ class InventoryItem(models.Model):
         unique_together = ("user", "item_id")
 
 
+class Buddy(models.Model):
+    """The one slotted companion on an account (paid feature). You carry it in a registered app (Omnitool
+    is one). Care raises its vitals, mood and relationship; while carried it occasionally reports
+    away-events (resources / XP from off-screen scraps). All state is server-authoritative — the client
+    only ever calls actions and displays what the site returns — so none of it is cheatable."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="buddy")
+    beast = models.ForeignKey("OwnedBeast", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    mood = models.IntegerField(default=60)          # 0-100
+    relationship = models.IntegerField(default=0)   # 0-100; 100 = "loves you"
+    hunger = models.IntegerField(default=60)        # vitals; higher is better, decay over time
+    energy = models.IntegerField(default=70)
+    cleanliness = models.IntegerField(default=80)
+    last_care = models.JSONField(default=dict)      # {action: iso8601} for per-action cooldowns
+    last_event_at = models.DateTimeField(null=True, blank=True)
+    refreshed_at = models.DateTimeField(default=timezone.now)  # anchor for vital decay
+    slotted_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user} buddy"
+
+
 class Node(models.Model):
     """A listener node the player signs in: it uploads rate-limited sensor SNAPSHOTS to this account.
     It need not run the full engine — just sensors -> ScanBundle -> POST /api/snapshot with its token."""

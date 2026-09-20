@@ -18,6 +18,7 @@ class Wallet(models.Model):
     # Free tier by default. Paid unlocks the web-service layer: multi-node, trading, battles, async
     # ladder, and the Buddy system. (Existing accounts were grandfathered to paid — see migration 0009.)
     subscribed = models.BooleanField(default=False)
+    last_sync = models.DateTimeField(null=True, blank=True)  # once-per-day standardize-old-beasts run
 
     def __str__(self):
         return f"{self.user} wallet"
@@ -33,8 +34,8 @@ class InventoryItem(models.Model):
 
 
 class Buddy(models.Model):
-    """The one slotted companion on an account (paid feature). You carry it in a registered app (Omnitool
-    is one). Care raises its vitals, mood and relationship; while carried it occasionally reports
+    """The one slotted companion on an account (paid feature). You carry it in a registered app. Care
+    raises its vitals, mood and relationship; while carried it occasionally reports
     away-events (resources / XP from off-screen scraps). All state is server-authoritative — the client
     only ever calls actions and displays what the site returns — so none of it is cheatable."""
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="buddy")

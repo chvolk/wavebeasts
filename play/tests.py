@@ -69,7 +69,7 @@ class BuddyApiTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("n", password="x")
         self.wallet = Wallet.objects.get_or_create(user=self.user, defaults={"subscribed": True})[0]
-        self.node = Node.objects.create(user=self.user, name="Omnitool")
+        self.node = Node.objects.create(user=self.user, name="companion")
 
     def _hdr(self):
         return {"HTTP_X_WB_NODE_TOKEN": self.node.token}
@@ -162,6 +162,42 @@ class BuyTests(TestCase):
     def test_buy_unknown_item(self, mshop):
         mshop.return_value = self.CATALOG
         self.assertEqual(self._buy("cheat_item").status_code, 404)
+
+
+@override_settings(ALLOWED_HOSTS=["testserver"])
+class SyncTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("syncer", password="x")
+        self.wallet = Wallet.objects.get_or_create(user=self.user)[0]
+        self.node = Node.objects.create(user=self.user, name="app")
+
+    def _mk(self, verified=True, idv=1):
+        return OwnedBeast.objects.create(user=self.user, species_id="sp", name="M", rarity="rare", level=5,
+            status="owned", verified=verified, id_version=idv, species_json={}, individual_json={})
+
+    def _sync(self):
+        return self.client.post("/api/sync", HTTP_X_WB_NODE_TOKEN=self.node.token)
+
+    @patch("play.resolver.capabilities")
+    def test_sync_backfills_nature_and_version_verified_only(self, mcaps):
+        mcaps.return_value = {"id_version": 2, "natures": ["Brave", "Timid"]}
+        b = self._mk(verified=True, idv=1)
+        unv = self._mk(verified=False, idv=1)
+        r = self._sync()
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["synced"], 1)
+        b.refresh_from_db()
+        self.assertEqual(b.id_version, 2)
+        self.assertIn(b.individual_json["nature"], ["Brave", "Timid"])
+        unv.refresh_from_db()
+        self.assertEqual(unv.id_version, 1)  # modded/unverified untouched
+
+    @patch("play.resolver.capabilities")
+    def test_sync_is_once_per_day(self, mcaps):
+        mcaps.return_value = {"id_version": 2, "natures": ["Brave"]}
+        self._mk()
+        self.assertEqual(self._sync().status_code, 200)
+        self.assertEqual(self._sync().status_code, 429)
 
 
 @override_settings(ALLOWED_HOSTS=["testserver"])

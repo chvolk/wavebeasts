@@ -24,6 +24,13 @@ def render(palette, recipe, shiny: bool) -> bytes:
     return r.content
 
 
+def capabilities() -> dict:
+    """Engine capabilities incl. id_version (current generation) and the natures list — used by /api/sync."""
+    r = requests.get(f"{RESOLVER}/capabilities", timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+
 def shop() -> dict:
     """The item catalog (id, name, cost_kind, cost_amt, ...) — the single source of truth for prices, so
     the site validates purchases against it rather than trusting a client."""

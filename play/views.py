@@ -1,3 +1,4 @@
+import hashlib
 import json
 import random
 import secrets
@@ -480,6 +481,46 @@ def api_import(request):
                          "note": "imported to your collection (unverified — not tradeable; submit scans via a node for verified beasts)"})
 
 
+SYNC_COOLDOWN_SEC = 86400  # one whole-account sync run per day
+
+
+@csrf_exempt
+def api_sync(request):
+    """Standardize older verified beasts to the current generation — backfill new fields (e.g. nature),
+    bump their id_version — so they pick up updates we ship over time. Free tier; token auth; verified
+    (non-modded) beasts only; each beast upgrades once per version; the whole run is once per day."""
+    node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
+    if not node:
+        return JsonResponse({"error": "bad node token"}, status=403)
+    w = _wallet(node.user)
+    now = timezone.now()
+    if w.last_sync and (now - w.last_sync).total_seconds() < SYNC_COOLDOWN_SEC:
+        retry = int(SYNC_COOLDOWN_SEC - (now - w.last_sync).total_seconds())
+        return JsonResponse({"error": "sync runs once per day", "retry_after": retry}, status=429)
+    try:
+        caps = resolver.capabilities()
+    except Exception as e:
+        return JsonResponse({"error": f"resolver unavailable: {e}"}, status=502)
+    cur = int(caps.get("id_version", 1))
+    natures = caps.get("natures", [])
+    synced = 0
+    for b in node.user.beasts.filter(verified=True):
+        ind = b.individual_json or {}
+        if b.id_version >= cur and ind.get("nature"):
+            continue  # already current
+        if not ind.get("nature") and natures:
+            h = int(hashlib.sha256(f"{b.species_id}:{b.id}".encode()).hexdigest(), 16)
+            ind["nature"] = natures[h % len(natures)]
+        ind["id_version"] = cur
+        b.individual_json = ind
+        b.id_version = cur
+        b.save(update_fields=["individual_json", "id_version"])
+        synced += 1
+    w.last_sync = now
+    w.save(update_fields=["last_sync"])
+    return JsonResponse({"ok": True, "synced": synced, "version": cur})
+
+
 @csrf_exempt
 def api_shop(request):
     """The item catalog (node-token auth). Prices come from the engine so the site owns them."""
@@ -558,7 +599,8 @@ def _beast_row(b):
     ind = b.individual_json or {}
     return {"id": b.id, "name": b.name, "rarity": b.rarity, "shiny": b.shiny, "level": b.level,
             "species_id": b.species_id, "verified": b.verified, "status": b.status,
-            "types": (b.species_json or {}).get("types", []), "nickname": ind.get("nickname", "")}
+            "types": (b.species_json or {}).get("types", []), "nickname": ind.get("nickname", ""),
+            "nature": ind.get("nature", "")}
 
 
 @csrf_exempt

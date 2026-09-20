@@ -167,7 +167,7 @@ def beast_summary(beast):
     ind = beast.individual_json or {}
     return {"id": beast.id, "name": beast.name, "rarity": beast.rarity, "shiny": beast.shiny,
             "level": beast.level, "species_id": beast.species_id, "types": sp.get("types", []),
-            "nickname": ind.get("nickname", "")}
+            "nickname": ind.get("nickname", ""), "nature": ind.get("nature", "")}
 
 
 def state(buddy):

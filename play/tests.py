@@ -7,7 +7,7 @@ from django.utils import timezone
 from datetime import timedelta
 
 from . import buddy as buddymod
-from .models import Buddy, Node, OwnedBeast, Wallet
+from .models import Buddy, InventoryItem, Node, OwnedBeast, Wallet
 
 User = get_user_model()
 
@@ -162,3 +162,29 @@ class BuyTests(TestCase):
     def test_buy_unknown_item(self, mshop):
         mshop.return_value = self.CATALOG
         self.assertEqual(self._buy("cheat_item").status_code, 404)
+
+
+@override_settings(ALLOWED_HOSTS=["testserver"])
+class CatchTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("catcher", password="x")
+        Wallet.objects.get_or_create(user=self.user)
+        self.node = Node.objects.create(user=self.user, name="app")
+
+    def _wild(self):
+        return OwnedBeast.objects.create(user=self.user, species_id="s", name="Wildmon", rarity="common",
+            level=1, status="wild", verified=True, species_json={}, individual_json={})
+
+    def _catch(self, beast_id, drive):
+        return self.client.post("/api/catch", data=json.dumps({"beast_id": beast_id, "drive": drive}),
+                                content_type="application/json", HTTP_X_WB_NODE_TOKEN=self.node.token)
+
+    def test_catch_needs_a_drive(self):
+        self.assertEqual(self._catch(self._wild().id, "pulse_drive").status_code, 409)
+
+    def test_catch_consumes_drive(self):
+        w = self._wild()
+        InventoryItem.objects.create(user=self.user, item_id="nova_drive", qty=1)
+        r = self._catch(w.id, "nova_drive")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["remaining"], 0)  # drive consumed regardless of outcome

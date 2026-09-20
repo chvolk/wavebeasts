@@ -34,6 +34,7 @@ urlpatterns = [
     path("api/import", views.api_import, name="api_import"),
 
     path("api/beasts", views.api_beasts, name="api_beasts"),
+    path("api/catch", views.api_catch, name="api_catch"),
     path("api/shop", views.api_shop, name="api_shop"),
     path("api/buy", views.api_buy, name="api_buy"),
     path("api/buddy", views.api_buddy, name="api_buddy"),

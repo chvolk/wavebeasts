@@ -537,21 +537,59 @@ def api_buy(request):
 
 @csrf_exempt
 def api_beasts(request):
-    """List the account's owned beasts (node-token auth). Free to read — this is how a companion app
-    shows your collection and picks a buddy. Sprites are at /sprite/<id>.png (public)."""
+    """The account's beasts (owned + wild sightings), inventory and currency (node-token auth). Free to
+    read — how a companion app shows your collection, bag, and picks a buddy. Sprites: /sprite/<id>.png."""
     node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
     if not node:
         return JsonResponse({"error": "bad node token"}, status=403)
     out = []
-    for b in node.user.beasts.filter(status="owned").order_by("-caught_at")[:500]:
-        ind = b.individual_json or {}
-        out.append({"id": b.id, "name": b.name, "rarity": b.rarity, "shiny": b.shiny, "level": b.level,
-                    "species_id": b.species_id, "verified": b.verified,
-                    "types": (b.species_json or {}).get("types", []), "nickname": ind.get("nickname", "")})
+    for b in node.user.beasts.exclude(status="wild").order_by("-caught_at")[:500]:
+        out.append(_beast_row(b))
+    wild = [_beast_row(b) for b in node.user.beasts.filter(status="wild").order_by("-caught_at")[:100]]
+    inv = {i.item_id: i.qty for i in node.user.items.filter(qty__gt=0)}
     buddy = getattr(node.user, "buddy", None)
     w = _wallet(node.user)
-    return JsonResponse({"ok": True, "beasts": out, "buddy_beast_id": getattr(buddy, "beast_id", None),
+    return JsonResponse({"ok": True, "beasts": out, "wild": wild, "inventory": inv,
+                         "buddy_beast_id": getattr(buddy, "beast_id", None),
                          "subscribed": w.subscribed, "shards": w.shards, "cores": w.cores})
+
+
+def _beast_row(b):
+    ind = b.individual_json or {}
+    return {"id": b.id, "name": b.name, "rarity": b.rarity, "shiny": b.shiny, "level": b.level,
+            "species_id": b.species_id, "verified": b.verified, "status": b.status,
+            "types": (b.species_json or {}).get("types", []), "nickname": ind.get("nickname", "")}
+
+
+@csrf_exempt
+def api_catch(request):
+    """Catch a wild account sighting with a drive from your bag (node-token auth). Server rolls the
+    chance and consumes the drive — outcome isn't client-controlled. Part of the free base loop."""
+    node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
+    if not node:
+        return JsonResponse({"error": "bad node token"}, status=403)
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"error": "bad json"}, status=400)
+    beast = OwnedBeast.objects.filter(id=data.get("beast_id"), user=node.user, status="wild").first()
+    if not beast:
+        return JsonResponse({"error": "no such wild sighting"}, status=404)
+    drive = str(data.get("drive") or "spark_drive")
+    with transaction.atomic():
+        inv = InventoryItem.objects.select_for_update().filter(user=node.user, item_id=drive, qty__gt=0).first()
+        if not inv:
+            return JsonResponse({"error": f"no {drive} in your bag"}, status=409)
+        inv.qty -= 1
+        inv.save()
+        p = 0.4 * DRIVE_MULT.get(drive, 1.0) * (0.2 + 0.8 * 0.5) * RARITY_RESIST.get(beast.rarity, 1.0)
+        chance = max(0.02, min(0.95, p))
+        caught = random.random() < chance
+        if caught:
+            beast.status = "owned"
+            beast.save(update_fields=["status"])
+    return JsonResponse({"ok": True, "caught": caught, "chance": round(chance, 2), "drive": drive,
+                         "remaining": inv.qty, "beast": _beast_row(beast)})
 
 
 # ---- Buddy API (paid) — the tamagotchi companion custom apps carry -------------------------------

@@ -36,6 +36,23 @@ def download(request):
     return render(request, "download.html", {"nav": "download"})
 
 
+def app_version(request):
+    """Version manifest the Android app polls to prompt for updates."""
+    from . import appversion
+    return JsonResponse({
+        "version_code": appversion.VERSION_CODE,
+        "version_name": appversion.VERSION_NAME,
+        "notes": appversion.NOTES,
+        "apk_url": request.build_absolute_uri("/download/app.apk"),
+    })
+
+
+def app_apk(request):
+    """Branded APK download URL → redirects to the current GitHub release asset."""
+    from django.http import HttpResponseRedirect
+    return HttpResponseRedirect("https://github.com/chvolk/wavebeast/releases/latest/download/wavebeast.apk")
+
+
 def signup(request):
     form = UserCreationForm(request.POST or None)
     if request.method == "POST" and form.is_valid():

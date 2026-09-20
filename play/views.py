@@ -384,6 +384,45 @@ def api_snapshot(request):
                          "entropy": res.get("entropy", 0), "next_snapshot_in": node.min_interval()})
 
 
+@csrf_exempt
+def api_import(request):
+    """Upload a subscriber's local collection to their account (deduped by the local beast id). Trust the
+    uploaded species/individual (subscription-gated) but cap IVs/level. Called by the engine's /node/upload."""
+    if request.method != "POST":
+        return JsonResponse({"error": "POST only"}, status=405)
+    node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
+    if not node:
+        return JsonResponse({"error": "bad node token"}, status=403)
+    if not _wallet(node.user).subscribed:
+        return JsonResponse({"error": "subscription required"}, status=402)
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"error": "bad json"}, status=400)
+    beasts = data.get("beasts", []) if isinstance(data, dict) else []
+    imported = skipped = 0
+    for b in beasts[:500]:
+        sp, ind = b.get("species") or {}, b.get("individual") or {}
+        sid = str(ind.get("id") or "")
+        if not sid or OwnedBeast.objects.filter(user=node.user, source_id=sid).exists():
+            skipped += 1
+            continue
+        ivs = ind.get("ivs") or {}
+        for k in list(ivs):
+            try:
+                ivs[k] = max(0, min(31, int(ivs[k])))
+            except (TypeError, ValueError):
+                ivs[k] = 0
+        ind["ivs"] = ivs
+        lvl = max(1, min(100, int(ind.get("level", 1) or 1)))
+        OwnedBeast.objects.create(
+            user=node.user, source_id=sid, species_id=sp.get("species_id", ""), id_version=sp.get("id_version", 1),
+            name=sp.get("name", "?"), rarity=ind.get("rarity", "common"), shiny=bool(ind.get("shiny")),
+            level=lvl, status="owned", species_json=sp, individual_json=ind)
+        imported += 1
+    return JsonResponse({"ok": True, "imported": imported, "skipped": skipped})
+
+
 def _apply_resource(user, res):
     w = _wallet(user)
     amt = int(res.get("reward_amount", 0))

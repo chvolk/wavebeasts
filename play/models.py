@@ -15,6 +15,7 @@ class Wallet(models.Model):
     shards = models.IntegerField(default=50)
     cores = models.IntegerField(default=0)
     team_ids = models.JSONField(default=list)
+    subscribed = models.BooleanField(default=True)  # faked-on for now; gates worldwide upload/features
 
     def __str__(self):
         return f"{self.user} wallet"
@@ -72,6 +73,7 @@ class OwnedBeast(models.Model):
     STATUS = [("wild", "wild"), ("owned", "owned")]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="beasts")
     node = models.ForeignKey(Node, null=True, blank=True, on_delete=models.SET_NULL)
+    source_id = models.CharField(max_length=64, blank=True, default="")  # local individual id, for dedupe on upload
     species_id = models.CharField(max_length=32)
     id_version = models.IntegerField(default=1)
     name = models.CharField(max_length=64)

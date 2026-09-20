@@ -29,4 +29,5 @@ urlpatterns = [
     path("ladder/run", views.ladder_run, name="ladder_run"),
 
     path("api/snapshot", views.api_snapshot, name="api_snapshot"),
+    path("api/import", views.api_import, name="api_import"),
 ]

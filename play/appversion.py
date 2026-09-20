@@ -2,8 +2,8 @@
 the app compares its installed versionCode against this and prompts to update. Keep VERSION_CODE in sync
 with android/app/build.gradle's versionCode in the wavebeast repo."""
 
-VERSION_CODE = 4
-VERSION_NAME = "0.4.0"
-NOTES = ("Cleaner scan screen: pick inputs from a dropdown (camera / import / sensor value) instead of "
-         "loose buttons. Plus app integration — share a barcode/QR value into WaveBeast, or open it with a "
-         "wavebeast:// deep link.")
+VERSION_CODE = 5
+VERSION_NAME = "0.5.0"
+NOTES = ("The engine now runs as a background service, so sweeping stays available on this device — and in "
+         "companion apps like Omnitool — even when WaveBeast is minimized (stop it any time from its "
+         "notification). Also fixes the top nav being hidden behind the status bar on newer Android.")

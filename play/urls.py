@@ -33,6 +33,7 @@ urlpatterns = [
     path("api/snapshot", views.api_snapshot, name="api_snapshot"),
     path("api/import", views.api_import, name="api_import"),
 
+    path("api/beasts", views.api_beasts, name="api_beasts"),
     path("api/buddy", views.api_buddy, name="api_buddy"),
     path("api/buddy/slot", views.api_buddy_slot, name="api_buddy_slot"),
     path("api/buddy/care", views.api_buddy_care, name="api_buddy_care"),

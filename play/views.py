@@ -480,6 +480,25 @@ def api_import(request):
                          "note": "imported to your collection (unverified — not tradeable; submit scans via a node for verified beasts)"})
 
 
+@csrf_exempt
+def api_beasts(request):
+    """List the account's owned beasts (node-token auth). Free to read — this is how a companion app
+    shows your collection and picks a buddy. Sprites are at /sprite/<id>.png (public)."""
+    node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
+    if not node:
+        return JsonResponse({"error": "bad node token"}, status=403)
+    out = []
+    for b in node.user.beasts.filter(status="owned").order_by("-caught_at")[:500]:
+        ind = b.individual_json or {}
+        out.append({"id": b.id, "name": b.name, "rarity": b.rarity, "shiny": b.shiny, "level": b.level,
+                    "species_id": b.species_id, "verified": b.verified,
+                    "types": (b.species_json or {}).get("types", []), "nickname": ind.get("nickname", "")})
+    buddy = getattr(node.user, "buddy", None)
+    w = _wallet(node.user)
+    return JsonResponse({"ok": True, "beasts": out, "buddy_beast_id": getattr(buddy, "beast_id", None),
+                         "subscribed": w.subscribed, "shards": w.shards, "cores": w.cores})
+
+
 # ---- Buddy API (paid) — the tamagotchi companion custom apps carry -------------------------------
 # All state is server-authoritative and node-token authed. Care raises vitals/mood/relationship; while
 # slotted, the buddy earns rate-limited away-events (resources/XP) — faster the more it loves you.

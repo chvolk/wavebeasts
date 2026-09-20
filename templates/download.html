@@ -70,5 +70,13 @@ curl -L {{ base }}/wavebeast-macos-amd64 -o wavebeast && chmod +x wavebeast && .
   submit snapshots or upload your local catches. Source &amp; releases on
   <a href="https://github.com/chvolk/wavebeast" target="_blank" rel="noopener">GitHub</a>.
 </div>
+
+<div class="section-label">Build on it</div>
+<div class="card muted">
+  WaveBeast has no client lock-in: anything that can produce signals can feed it. Wire your own tools in
+  over the HTTP API or CLI on desktop/Linux, or share text / <code>wavebeast://</code> deep links into the
+  Android app. See the
+  <a href="https://github.com/chvolk/wavebeast/blob/main/INTEGRATION.md" target="_blank" rel="noopener">integration guide</a>.
+</div>
 {% endwith %}
 {% endblock %}

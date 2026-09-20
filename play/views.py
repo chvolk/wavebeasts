@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
-from . import resolver
+from . import ladder, resolver
 from .models import (AsyncBattle, BattleRecord, InventoryItem, LadderTeam, Node,
                      OwnedBeast, Snapshot, TradeListing, TradeOffer, Wallet)
 
@@ -262,41 +262,21 @@ def ladder_run(request):
     if not lt or not lt.fighters:
         request.session["ladder_msg"] = "Enter the ladder first."
         return redirect("battle")
-    opponents = list(LadderTeam.objects.exclude(user=request.user).exclude(fighters=[]))
+    opponents = list(LadderTeam.objects.exclude(user=request.user).exclude(fighters=[]).select_related("user"))
     if not opponents:
         request.session["ladder_msg"] = "No opponents yet — check back once others join the ladder."
         return redirect("battle")
     random.shuffle(opponents)
     wins = 0
+    played = 0
     for opp in opponents[:5]:
-        try:
-            res = resolver.battle_auto(lt.fighters, opp.fighters)
-        except Exception:
+        r = ladder.resolve_match(lt, opp, initiator=request.user)
+        if r is None:
             break
-        winner = res.get("winner")
-        mine = "win" if winner == "a" else ("draw" if winner == "draw" else "loss")
-        theirs = {"win": "loss", "loss": "win", "draw": "draw"}[mine]
-        score = 1.0 if mine == "win" else (0.5 if mine == "draw" else 0.0)
-        expected = 1.0 / (1.0 + 10 ** ((opp.mmr - lt.mmr) / 400.0))
-        delta = round(24 * (score - expected))
-        lt.mmr += delta
-        opp.mmr -= delta
-        if mine == "win":
+        played += 1
+        if r == "win":
             wins += 1
-            lt.wins += 1
-            opp.losses += 1
-        elif mine == "loss":
-            lt.losses += 1
-            opp.wins += 1
-        opp.save(update_fields=["mmr", "wins", "losses"])
-        AsyncBattle.objects.create(user=request.user, opponent=opp.user.username, result=mine, mmr_delta=delta, turns=res.get("turns", 0), seen=True)
-        AsyncBattle.objects.create(user=opp.user, opponent=request.user.username, result=theirs, mmr_delta=-delta, turns=res.get("turns", 0), seen=False)
-    lt.save()
-    if wins:
-        w = _wallet(request.user)
-        w.shards += wins * 15
-        w.save(update_fields=["shards"])
-    request.session["ladder_msg"] = f"Ran {min(5, len(opponents))} ladder matches · {wins} won."
+    request.session["ladder_msg"] = f"Ran {played} ladder matches · {wins} won."
     return redirect("battle")
 
 

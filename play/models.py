@@ -81,6 +81,9 @@ class OwnedBeast(models.Model):
     shiny = models.BooleanField(default=False)
     level = models.IntegerField(default=1)
     status = models.CharField(max_length=8, choices=STATUS, default="wild")
+    # verified = the site generated this beast itself (server-authoritative roll) from a submitted scan.
+    # Only verified beasts can be traded or laddered; imported (claimed-stats) beasts are collection-only.
+    verified = models.BooleanField(default=False)
     species_json = models.JSONField()
     individual_json = models.JSONField()
     caught_at = models.DateTimeField(auto_now_add=True)

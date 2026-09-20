@@ -1,5 +1,6 @@
 import json
 import random
+import secrets
 
 import requests
 
@@ -179,7 +180,9 @@ def trade(request):
 def trade_list_beast(request):
     if request.method == "POST":
         beast = get_object_or_404(OwnedBeast, id=request.POST.get("beast_id"), user=request.user, status="owned")
-        if not TradeListing.objects.filter(beast=beast, is_open=True).exists():
+        if not beast.verified:
+            request.session["trade_msg"] = "Only verified beasts (caught through a node) can be traded."
+        elif not TradeListing.objects.filter(beast=beast, is_open=True).exists():
             TradeListing.objects.create(user=request.user, beast=beast, note=(request.POST.get("note") or "")[:200])
     return redirect("trade")
 
@@ -194,7 +197,9 @@ def trade_unlist(request, listing_id):
 def trade_offer(request, listing_id):
     listing = get_object_or_404(TradeListing, id=listing_id, is_open=True)
     beast = get_object_or_404(OwnedBeast, id=request.POST.get("beast_id"), user=request.user, status="owned")
-    if listing.user_id != request.user.id:
+    if not beast.verified:
+        request.session["trade_msg"] = "Only verified beasts (caught through a node) can be offered in trade."
+    elif listing.user_id != request.user.id:
         TradeOffer.objects.create(listing=listing, from_user=request.user, offered_beast=beast)
     return redirect("trade")
 
@@ -317,7 +322,8 @@ def ladder_run(request):
 def set_team(request):
     if request.method == "POST":
         ids = request.POST.getlist("beast_ids")[:3]
-        valid = list(OwnedBeast.objects.filter(user=request.user, status="owned", id__in=ids).values_list("id", flat=True))
+        # Only verified beasts fight on the ladder/gyms — no modded stats in competitive play.
+        valid = list(OwnedBeast.objects.filter(user=request.user, status="owned", verified=True, id__in=ids).values_list("id", flat=True))
         w = _wallet(request.user)
         w.team_ids = [str(i) for i in valid]
         w.save(update_fields=["team_ids"])
@@ -379,7 +385,9 @@ def api_snapshot(request):
     except Exception:
         return JsonResponse({"error": "bad json"}, status=400)
     try:
-        res = resolver.generate(bundle)
+        # Server-authoritative roll: a per-submission random nonce the client can't predict, so the
+        # resulting stats can't be modded or ground out. Species stays deterministic from the bundle.
+        res = resolver.generate(bundle, roll_nonce=secrets.token_hex(16))
     except Exception as e:
         return JsonResponse({"error": f"resolver unavailable: {e}"}, status=502)
     node.last_snapshot_at = timezone.now()
@@ -431,9 +439,12 @@ def api_import(request):
         OwnedBeast.objects.create(
             user=node.user, source_id=sid, species_id=sp.get("species_id", ""), id_version=sp.get("id_version", 1),
             name=sp.get("name", "?"), rarity=ind.get("rarity", "common"), shiny=bool(ind.get("shiny")),
-            level=lvl, status="owned", species_json=sp, individual_json=ind)
+            level=lvl, status="owned", verified=False, species_json=sp, individual_json=ind)
         imported += 1
-    return JsonResponse({"ok": True, "imported": imported, "skipped": skipped})
+    # verified=False: imported beasts carry client-claimed stats, so they're collection-only — never
+    # tradeable or laddered. To get a legit tradeable copy, submit the scan via a node (site re-rolls it).
+    return JsonResponse({"ok": True, "imported": imported, "skipped": skipped,
+                         "note": "imported to your collection (unverified — not tradeable; submit scans via a node for verified beasts)"})
 
 
 def _apply_resource(user, res):
@@ -459,5 +470,5 @@ def _apply_beast(node, res):
     OwnedBeast.objects.create(
         user=user, node=node, species_id=sp.get("species_id", ""), id_version=sp.get("id_version", 1),
         name=sp.get("name", "?"), rarity=ind.get("rarity", "common"), shiny=bool(ind.get("shiny")),
-        level=ind.get("level", 1), status=status, species_json=sp, individual_json=ind)
+        level=ind.get("level", 1), status=status, verified=True, species_json=sp, individual_json=ind)
     return f"{'caught (free)' if status == 'owned' else 'sighted'} {sp.get('name')} [{ind.get('rarity')}]"

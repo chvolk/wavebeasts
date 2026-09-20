@@ -8,8 +8,12 @@ import requests
 RESOLVER = os.environ.get("WAVEBEAST_RESOLVER", "http://bishop.home:8777")
 
 
-def generate(bundle: dict) -> dict:
-    r = requests.post(f"{RESOLVER}/generate", json=bundle, timeout=15)
+def generate(bundle: dict, roll_nonce: str = "") -> dict:
+    """Resolve a scan bundle to a beast. Pass roll_nonce (a server secret + random) to make the
+    individual roll server-authoritative — stats the client can't predict, mod, or grind. Species stays
+    deterministic from the bundle's identity regardless."""
+    headers = {"X-WB-Roll-Nonce": roll_nonce} if roll_nonce else {}
+    r = requests.post(f"{RESOLVER}/generate", json=bundle, headers=headers, timeout=15)
     r.raise_for_status()
     return r.json()
 

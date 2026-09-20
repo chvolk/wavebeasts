@@ -25,6 +25,8 @@ urlpatterns = [
     path("battle/", views.battle, name="battle"),
     path("battle/team", views.set_team, name="set_team"),
     path("battle/fight", views.battle_fight, name="battle_fight"),
+    path("ladder/enter", views.ladder_enter, name="ladder_enter"),
+    path("ladder/run", views.ladder_run, name="ladder_run"),
 
     path("api/snapshot", views.api_snapshot, name="api_snapshot"),
 ]

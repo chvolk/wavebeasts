@@ -48,6 +48,47 @@
   {% endif %}
 </div>
 
+<div class="card" style="margin-top:16px">
+  <div class="section-label" style="margin-top:0">Ranked ladder · async PvP</div>
+  {% if ladder_msg %}<p style="color:var(--yellow);margin-top:0">{{ ladder_msg }}</p>{% endif %}
+  {% if unseen %}
+  <div class="card" style="border-color:var(--red-dim);margin:0 0 14px">
+    <div class="label" style="margin-top:0">While you were away · {{ unseen|length }} match{{ unseen|length|pluralize:"es" }}</div>
+    {% for b in unseen %}
+    <div class="stat"><span style="color:{% if b.result == 'win' %}var(--yellow){% elif b.result == 'loss' %}var(--red){% else %}var(--silver){% endif %};text-transform:capitalize">{{ b.result }}</span>
+      <span class="muted">vs {{ b.opponent }}</span><span class="sv">{{ b.mmr_delta }} MMR</span></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if ladder %}
+    <div><span class="chip acc">MMR <b>{{ ladder.mmr }}</b></span> <span class="chip">{{ ladder.wins }}W / {{ ladder.losses }}L</span></div>
+    <div class="stack" style="margin-top:12px">
+      <form method="post" action="/ladder/run">{% csrf_token %}<button class="btn" type="submit">Run 5 matches</button></form>
+      <form method="post" action="/ladder/enter">{% csrf_token %}<button class="btn sec" type="submit">Update team on ladder</button></form>
+    </div>
+  {% else %}
+    <p class="muted" style="margin-top:0">Submit your team to the ranked ladder. It gets battled by other trainers even while you're offline — results and rating land here.</p>
+    <form method="post" action="/ladder/enter">{% csrf_token %}<button class="btn" type="submit">Enter the ladder</button></form>
+  {% endif %}
+  {% if ladder_recent %}
+  <div class="label">Your ladder results</div>
+  <div style="max-height:180px;overflow:auto">
+    {% for b in ladder_recent %}
+    <div class="stat"><span style="color:{% if b.result == 'win' %}var(--yellow){% elif b.result == 'loss' %}var(--red){% else %}var(--silver){% endif %};text-transform:capitalize">{{ b.result }}</span>
+      <span class="muted">vs {{ b.opponent }}</span><span class="sv">{{ b.mmr_delta }}</span></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if top %}
+  <div class="label">Top trainers</div>
+  <div class="card" style="padding:4px 14px;margin:0">
+    <table><tr><th>#</th><th>Trainer</th><th>MMR</th><th>W/L</th></tr>
+    {% for t in top %}<tr><td>{{ forloop.counter }}</td><td>{{ t.user.username }}</td><td class="sv">{{ t.mmr }}</td><td class="muted">{{ t.wins }}/{{ t.losses }}</td></tr>{% endfor %}
+    </table>
+  </div>
+  {% endif %}
+</div>
+
 {% if records %}
 <div class="section-label">Recent battles</div>
 <div class="card" style="padding:6px 18px">

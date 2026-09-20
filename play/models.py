@@ -120,6 +120,34 @@ class TradeOffer(models.Model):
         ordering = ["-created"]
 
 
+class LadderTeam(models.Model):
+    """A player's submitted async-PvP team: a frozen snapshot of up to 3 fighters + their rating, so it
+    can be battled by others even while the player is offline (Super Auto Pets style)."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ladder")
+    fighters = models.JSONField(default=list)  # [{species, individual}, ...]
+    mmr = models.IntegerField(default=1000)
+    wins = models.IntegerField(default=0)
+    losses = models.IntegerField(default=0)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-mmr"]
+
+
+class AsyncBattle(models.Model):
+    """A resolved ladder match from one player's perspective (both sides get a row)."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ladder_battles")
+    opponent = models.CharField(max_length=64)
+    result = models.CharField(max_length=8)  # win|loss|draw
+    mmr_delta = models.IntegerField(default=0)
+    turns = models.IntegerField(default=0)
+    seen = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created"]
+
+
 class BattleRecord(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="battles")
     opponent = models.CharField(max_length=64)

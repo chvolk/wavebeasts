@@ -11,8 +11,8 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from . import resolver
-from .models import (BattleRecord, InventoryItem, Node, OwnedBeast, Snapshot,
-                     TradeListing, TradeOffer, Wallet)
+from .models import (AsyncBattle, BattleRecord, InventoryItem, LadderTeam, Node,
+                     OwnedBeast, Snapshot, TradeListing, TradeOffer, Wallet)
 
 DRIVE_MULT = {"spark_drive": 1.0, "pulse_drive": 1.5, "surge_drive": 2.5, "nova_drive": 4.0}
 RARITY_RESIST = {"common": 1.0, "uncommon": 0.85, "rare": 0.65, "epic": 0.45, "legendary": 0.28}
@@ -229,10 +229,75 @@ def battle(request):
     owned = list(request.user.beasts.filter(status="owned"))
     team_ids = [str(i) for i in (_wallet(request.user).team_ids or [])]
     result = request.session.pop("last_battle", None)
+    lt = LadderTeam.objects.filter(user=request.user).first()
+    unseen = list(AsyncBattle.objects.filter(user=request.user, seen=False)[:20])
+    if unseen:
+        AsyncBattle.objects.filter(user=request.user, seen=False).update(seen=True)
     return render(request, "battle.html", {
         "owned": owned, "team_ids": team_ids, "result": result,
         "records": list(request.user.battles.all()[:8]), "nav": "battle",
+        "ladder": lt, "unseen": unseen,
+        "ladder_recent": list(request.user.ladder_battles.all()[:10]),
+        "top": list(LadderTeam.objects.select_related("user")[:10]),
+        "ladder_msg": request.session.pop("ladder_msg", None),
     })
+
+
+@login_required
+def ladder_enter(request):
+    fighters = _team_for(request.user)
+    if not fighters:
+        request.session["ladder_msg"] = "Set a team of up to 3 beasts first."
+    else:
+        lt, _ = LadderTeam.objects.get_or_create(user=request.user)
+        lt.fighters = fighters
+        lt.save()
+        request.session["ladder_msg"] = "On the ladder — other trainers will battle your team while you're away."
+    return redirect("battle")
+
+
+@login_required
+def ladder_run(request):
+    lt = LadderTeam.objects.filter(user=request.user).first()
+    if not lt or not lt.fighters:
+        request.session["ladder_msg"] = "Enter the ladder first."
+        return redirect("battle")
+    opponents = list(LadderTeam.objects.exclude(user=request.user).exclude(fighters=[]))
+    if not opponents:
+        request.session["ladder_msg"] = "No opponents yet — check back once others join the ladder."
+        return redirect("battle")
+    random.shuffle(opponents)
+    wins = 0
+    for opp in opponents[:5]:
+        try:
+            res = resolver.battle_auto(lt.fighters, opp.fighters)
+        except Exception:
+            break
+        winner = res.get("winner")
+        mine = "win" if winner == "a" else ("draw" if winner == "draw" else "loss")
+        theirs = {"win": "loss", "loss": "win", "draw": "draw"}[mine]
+        score = 1.0 if mine == "win" else (0.5 if mine == "draw" else 0.0)
+        expected = 1.0 / (1.0 + 10 ** ((opp.mmr - lt.mmr) / 400.0))
+        delta = round(24 * (score - expected))
+        lt.mmr += delta
+        opp.mmr -= delta
+        if mine == "win":
+            wins += 1
+            lt.wins += 1
+            opp.losses += 1
+        elif mine == "loss":
+            lt.losses += 1
+            opp.wins += 1
+        opp.save(update_fields=["mmr", "wins", "losses"])
+        AsyncBattle.objects.create(user=request.user, opponent=opp.user.username, result=mine, mmr_delta=delta, turns=res.get("turns", 0), seen=True)
+        AsyncBattle.objects.create(user=opp.user, opponent=request.user.username, result=theirs, mmr_delta=-delta, turns=res.get("turns", 0), seen=False)
+    lt.save()
+    if wins:
+        w = _wallet(request.user)
+        w.shards += wins * 15
+        w.save(update_fields=["shards"])
+    request.session["ladder_msg"] = f"Ran {min(5, len(opponents))} ladder matches · {wins} won."
+    return redirect("battle")
 
 
 @login_required

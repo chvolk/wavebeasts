@@ -41,7 +41,7 @@
   .wordmark{font-weight:700;letter-spacing:5px;background:linear-gradient(100deg,var(--silver-hi),var(--red) 60%,var(--red-dim));
     -webkit-background-clip:text;background-clip:text;color:transparent}
 
-  nav.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:20px;padding:14px 22px;
+  nav.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;flex-wrap:wrap;gap:12px 20px;padding:14px 22px;
     background:rgba(10,10,11,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
   nav.top .brand{font-size:19px}
   nav.top .links{display:flex;gap:6px;margin-left:8px}
@@ -116,6 +116,32 @@
   .errornote,.errorlist{color:var(--red);font-size:13px;list-style:none;padding:0;margin:0 0 12px}
   .grow{flex:1}
   .stack{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  /* keep wide content inside the viewport */
+  html,body{overflow-x:hidden;max-width:100%}
+  img,video,pre,table,canvas{max-width:100%}
+  pre{white-space:pre-wrap;word-break:break-word}
+  code{word-break:break-word}
+  td code{word-break:break-all}
+  /* --- mobile --- */
+  @media(max-width:640px){
+    nav.top{gap:10px 12px;padding:11px 14px}
+    nav.top .brand{font-size:16px;letter-spacing:3px}
+    nav.top .links{order:3;width:100%;overflow-x:auto;white-space:nowrap;gap:2px;margin-left:0;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    nav.top .links::-webkit-scrollbar{display:none}
+    nav.top .links a{padding:6px 10px;font-size:13px}
+    nav.top .right{gap:6px}
+    nav.top .right .chip{padding:4px 9px;font-size:12px}
+    nav.top .right .btn.sm{padding:6px 9px}
+    main{padding:18px 14px 70px}
+    h1{font-size:24px;letter-spacing:.5px}
+    .card{padding:14px;border-radius:14px;overflow-x:auto}
+    td,th{padding:8px 6px;font-size:13px}
+    .beasts{grid-template-columns:repeat(2,1fr);gap:10px}
+    .beast img{width:96px;height:96px}
+    .backdrop{padding:12px}
+    .stat{font-size:12.5px}
+  }
+  @media(max-width:360px){ .beast .stage{padding:2px} .beast img{width:84px;height:84px} }
   /* --- wavy / glitch motion --- */
   @keyframes wbWave{0%{background-position:0% 0%,100% 100%,0 0}100%{background-position:100% 40%,0% 60%,260px 0}}
   @keyframes wbGlitch{0%,86%,100%{text-shadow:none;transform:none}88%{text-shadow:-2px 0 var(--red),2px 0 var(--silver);transform:skewX(-3deg)}91%{text-shadow:2px 0 var(--yellow),-2px 0 var(--silver-hi);transform:translateX(1px)}94%{text-shadow:-1px 0 var(--red),1px 0 var(--silver);transform:none}}

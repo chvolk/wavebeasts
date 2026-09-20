@@ -2,54 +2,72 @@
 {% block title %}Download · WaveBeasts{% endblock %}
 {% block content %}
 {% with base="https://github.com/chvolk/wavebeast/releases/latest/download" %}
+<style>
+  .dlgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .dltile{background:linear-gradient(180deg,var(--panel),#0f0f12);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;box-shadow:var(--shadow)}
+  .dltile .os{font-family:'Space Grotesk';font-weight:700;letter-spacing:1px;margin-bottom:2px}
+  .dltile .sub{color:var(--dim);font-size:12px;min-height:30px;margin-bottom:10px}
+  .dltile .btn{width:100%;justify-content:center}
+  .cli{display:flex;flex-direction:column;gap:12px}
+  .cli .lab{font-family:'Space Grotesk';font-size:12px;letter-spacing:1px;color:var(--silver);margin-bottom:4px}
+  @media(max-width:820px){.dlgrid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:460px){.dlgrid{grid-template-columns:1fr}}
+</style>
+
 <h1 style="margin:0 0 4px">Download WaveBeast</h1>
-<p class="muted" style="margin:0 0 20px">Run it anywhere — your phone, a PC, or a Raspberry Pi. Local play
-is free: catch, train and battle. Link this account to trade &amp; battle worldwide.</p>
+<p class="muted" style="margin:0 0 20px">One engine, every platform. Local play is free — catch, train and
+battle. Link this account to trade &amp; battle worldwide.</p>
 
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px">
-
-  <div class="card">
-    <div class="section-label" style="margin-top:0">Android</div>
-    <p class="muted" style="margin-top:0">Phone sensors, camera, barcode &amp; QR scanning. Sideload the APK.</p>
-    <a class="btn" href="{{ base }}/wavebeast.apk">Download APK</a>
-    <p class="dim" style="font-size:12px;margin-bottom:0">Allow "install unknown apps" for your browser.</p>
+<div class="dlgrid">
+  <div class="dltile">
+    <div class="os">Android</div>
+    <div class="sub">Phone sensors, camera, barcode &amp; QR.</div>
+    <a class="btn" href="{{ base }}/wavebeast.apk">APK</a>
   </div>
-
-  <div class="card">
-    <div class="section-label" style="margin-top:0">Windows</div>
-    <p class="muted" style="margin-top:0">Run the exe, then it opens <code>http://localhost:8777</code>.</p>
-    <a class="btn" href="{{ base }}/wavebeast-windows-amd64.exe">Download for Windows</a>
-    <p class="dim" style="font-size:12px;margin-bottom:0">SmartScreen: More info &rsaquo; Run anyway (unsigned).</p>
+  <div class="dltile">
+    <div class="os">Windows</div>
+    <div class="sub">Run it, then open localhost:8777.</div>
+    <a class="btn" href="{{ base }}/wavebeast-windows-amd64.exe">.exe (x64)</a>
   </div>
-
-  <div class="card">
-    <div class="section-label" style="margin-top:0">macOS</div>
-    <p class="muted" style="margin-top:0">Then open <code>http://localhost:8777</code>.</p>
-    <div class="stack">
-      <a class="btn" href="{{ base }}/wavebeast-macos-arm64">Apple Silicon</a>
-      <a class="btn sec" href="{{ base }}/wavebeast-macos-amd64">Intel</a>
-    </div>
-    <p class="dim" style="font-size:12px;margin-bottom:0"><code>chmod +x</code> it; first run: right-click &rsaquo; Open.</p>
+  <div class="dltile">
+    <div class="os">macOS</div>
+    <div class="sub">Apple Silicon (Intel below).</div>
+    <a class="btn" href="{{ base }}/wavebeast-macos-arm64">Apple Silicon</a>
   </div>
-
-  <div class="card">
-    <div class="section-label" style="margin-top:0">Linux &amp; Raspberry Pi</div>
-    <p class="muted" style="margin-top:0">A single static binary. <code>chmod +x</code>, run, open :8777.</p>
-    <div class="stack">
-      <a class="btn" href="{{ base }}/wavebeast-linux-amd64">x86-64</a>
-      <a class="btn sec" href="{{ base }}/wavebeast-linux-arm64">ARM64 (Pi 4/5)</a>
-      <a class="btn sec" href="{{ base }}/wavebeast-linux-armv7">ARMv7 (Pi Zero 2)</a>
-    </div>
+  <div class="dltile">
+    <div class="os">Linux / Pi</div>
+    <div class="sub">Static binary, incl. Raspberry Pi.</div>
+    <a class="btn" href="{{ base }}/wavebeast-linux-arm64">ARM64 (Pi 4/5)</a>
   </div>
-
 </div>
 
-<div class="section-label">How it works</div>
+<div class="section-label">Or grab it from the command line</div>
+<div class="cli">
+  <div>
+    <div class="lab">Linux · x86-64</div>
+    <pre>curl -L {{ base }}/wavebeast-linux-amd64 -o wavebeast && chmod +x wavebeast && ./wavebeast</pre>
+  </div>
+  <div>
+    <div class="lab">Raspberry Pi · ARM64 (Pi 4/5) &nbsp;·&nbsp; ARMv7 (Pi Zero 2 / older)</div>
+    <pre>curl -L {{ base }}/wavebeast-linux-arm64 -o wavebeast && chmod +x wavebeast && ./wavebeast
+curl -L {{ base }}/wavebeast-linux-armv7 -o wavebeast && chmod +x wavebeast && ./wavebeast</pre>
+  </div>
+  <div>
+    <div class="lab">macOS · Apple Silicon &nbsp;·&nbsp; Intel</div>
+    <pre>curl -L {{ base }}/wavebeast-macos-arm64 -o wavebeast && chmod +x wavebeast && ./wavebeast
+curl -L {{ base }}/wavebeast-macos-amd64 -o wavebeast && chmod +x wavebeast && ./wavebeast</pre>
+  </div>
+  <div>
+    <div class="lab">Windows · PowerShell</div>
+    <pre>iwr {{ base }}/wavebeast-windows-amd64.exe -OutFile wavebeast.exe; .\wavebeast.exe</pre>
+  </div>
+</div>
+
+<div class="section-label">Then</div>
 <div class="card muted">
-  Every download is the same engine. Run it and a small web GUI is served at
-  <code>http://localhost:8777</code> — scan the world into WaveBeasts. Scans yield about once a minute.
-  Any device can act as a listener node: create a node in <a href="/me/">your profile</a>, paste its token
-  into the app's WORLD tab, and submit snapshots to grow your online beastiary. Source &amp; releases on
+  Open <code>http://localhost:8777</code> and play. Scans yield about once a minute. To grow your online
+  beastiary, create a node in <a href="/me/">your profile</a>, paste its token into the app's WORLD tab, and
+  submit snapshots or upload your local catches. Source &amp; releases on
   <a href="https://github.com/chvolk/wavebeast" target="_blank" rel="noopener">GitHub</a>.
 </div>
 {% endwith %}

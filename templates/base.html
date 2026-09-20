@@ -24,19 +24,21 @@
     --bg:#0a0a0b; --panel:#131316; --elev:#1a1a20; --line:#2a2a31; --line2:#3a3a44;
     --ink:#e9ebf0; --mut:#9095a0; --dim:#6b7080;
     --silver:#c7ccd6; --silver-hi:#eef1f6;
-    --gold:#d4af37; --gold-hi:#f0cf6b; --gold-dim:#8f7526;
-    --red:#d64545; --red-dim:#8f2f2f;
+    --red:#e0362f; --red-hi:#ff5b52; --red-dim:#9e2822;
+    --yellow:#e6c34d; --yellow-hi:#ffdd6b;
     --shadow:0 8px 30px rgba(0,0,0,.5);
   }
   *{box-sizing:border-box}
   html,body{margin:0}
-  body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.55;
-    background-image:radial-gradient(1200px 600px at 80% -10%, rgba(212,175,55,.06), transparent 60%),
-                     radial-gradient(900px 500px at -10% 10%, rgba(214,69,69,.05), transparent 55%);
-    background-attachment:fixed;min-height:100vh}
-  a{color:var(--gold);text-decoration:none} a:hover{color:var(--gold-hi)}
+  body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.55;min-height:100vh;
+    background-image:
+      radial-gradient(1200px 620px at 80% -12%, rgba(224,54,47,.10), transparent 60%),
+      radial-gradient(900px 520px at -10% 8%, rgba(230,195,77,.05), transparent 55%),
+      repeating-linear-gradient(115deg, transparent 0 54px, rgba(199,204,214,.02) 54px 56px);
+    background-size:200% 200%,200% 200%,200% 200%;animation:wbWave 30s linear infinite alternate}
+  a{color:var(--red);text-decoration:none} a:hover{color:var(--red-hi)}
   h1,h2,h3,.brand{font-family:'Space Grotesk',sans-serif}
-  .wordmark{font-weight:700;letter-spacing:5px;background:linear-gradient(100deg,var(--silver-hi),var(--gold) 60%,var(--gold-dim));
+  .wordmark{font-weight:700;letter-spacing:5px;background:linear-gradient(100deg,var(--silver-hi),var(--red) 60%,var(--red-dim));
     -webkit-background-clip:text;background-clip:text;color:transparent}
 
   nav.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:20px;padding:14px 22px;
@@ -45,19 +47,20 @@
   nav.top .links{display:flex;gap:6px;margin-left:8px}
   nav.top .links a{color:var(--mut);font-weight:500;padding:6px 12px;border-radius:8px;font-size:14px;letter-spacing:.3px}
   nav.top .links a:hover{color:var(--ink);background:var(--elev)}
-  nav.top .links a.active{color:var(--gold);background:rgba(212,175,55,.10);box-shadow:inset 0 -2px 0 var(--gold)}
+  nav.top .links a.active{color:var(--red);background:rgba(224,54,47,.10);box-shadow:inset 0 -2px 0 var(--red)}
   nav.top .right{margin-left:auto;display:flex;align-items:center;gap:10px}
 
   main{max-width:1040px;margin:0 auto;padding:26px 18px 80px}
 
   .chip{display:inline-flex;align-items:center;gap:6px;background:var(--elev);border:1px solid var(--line);
     border-radius:20px;padding:5px 12px;font-size:13px;color:var(--mut)}
-  .chip b{color:var(--gold);font-family:'Space Grotesk'}
+  .chip b{color:var(--red);font-family:'Space Grotesk'}
   .chip.silver b{color:var(--silver-hi)}
+  .chip.acc b{color:var(--yellow)}
 
   .btn{display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:0;border-radius:10px;padding:10px 16px;
     font-family:'Space Grotesk';font-weight:600;letter-spacing:.5px;font-size:14px;
-    background:linear-gradient(180deg,var(--gold-hi),var(--gold) 55%,var(--gold-dim));color:#160f02;
+    background:linear-gradient(180deg,var(--red-hi),var(--red) 55%,var(--red-dim));color:#fff;
     box-shadow:0 2px 0 rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.35)}
   .btn:hover{filter:brightness(1.06)}
   .btn.sec{background:transparent;color:var(--silver);border:1px solid var(--line2);box-shadow:none}
@@ -73,7 +76,7 @@
 
   input,select,textarea{width:100%;background:#0d0d10;border:1px solid var(--line2);color:var(--ink);
     border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit}
-  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold-dim);box-shadow:0 0 0 3px rgba(212,175,55,.12)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red-dim);box-shadow:0 0 0 3px rgba(224,54,47,.12)}
   label{font-size:13px;color:var(--mut);display:block;margin:0 0 6px}
   code{background:#0d0d10;border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:13px;color:var(--silver)}
   pre{background:#0d0d10;border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;font-size:12.5px;color:var(--silver)}
@@ -87,7 +90,7 @@
   .beast{position:relative;background:linear-gradient(180deg,var(--panel),#0e0e11);border:1px solid var(--line);
     border-radius:14px;padding:12px;text-align:center;transition:transform .12s,border-color .12s}
   .beast:hover{transform:translateY(-3px);border-color:var(--line2)}
-  .beast .stage{background:radial-gradient(60% 60% at 50% 45%,rgba(212,175,55,.10),transparent 70%);border-radius:12px;padding:6px}
+  .beast .stage{background:radial-gradient(60% 60% at 50% 45%,rgba(224,54,47,.10),transparent 70%);border-radius:12px;padding:6px}
   .beast img{width:104px;height:104px;image-rendering:pixelated}
   .beast .nm{font-family:'Space Grotesk';font-weight:600;font-size:15px;margin-top:4px}
   .beast .ty{font-size:11.5px;color:var(--mut);letter-spacing:.4px}
@@ -96,10 +99,10 @@
   .rt-common{color:var(--mut);border-color:var(--line2)}
   .rt-uncommon{color:var(--silver);border-color:#4a4a54}
   .rt-rare{color:var(--silver-hi);border-color:var(--silver);background:rgba(199,204,214,.06)}
-  .rt-epic{color:var(--gold);border-color:var(--gold-dim);background:rgba(212,175,55,.08)}
-  .rt-legendary{color:var(--gold-hi);border-color:var(--gold);background:rgba(212,175,55,.14);box-shadow:0 0 18px rgba(212,175,55,.18)}
-  .shiny{position:absolute;top:8px;right:8px;font-size:10px;font-weight:700;letter-spacing:1px;color:#160f02;
-    background:linear-gradient(180deg,var(--gold-hi),var(--gold));padding:2px 7px;border-radius:6px;font-family:'Space Grotesk'}
+  .rt-epic{color:var(--red-hi);border-color:var(--red-dim);background:rgba(224,54,47,.10)}
+  .rt-legendary{color:var(--yellow-hi);border-color:var(--yellow);background:rgba(230,195,77,.14);box-shadow:0 0 18px rgba(230,195,77,.22)}
+  .shiny{position:absolute;top:8px;right:8px;font-size:10px;font-weight:700;letter-spacing:1px;color:#1a1405;
+    background:linear-gradient(180deg,var(--yellow-hi),var(--yellow));padding:2px 7px;border-radius:6px;font-family:'Space Grotesk'}
   .lv{position:absolute;top:8px;left:8px;font-size:11px;color:var(--silver);background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:6px;padding:1px 7px}
 
   /* auth modal */
@@ -113,6 +116,18 @@
   .errornote,.errorlist{color:var(--red);font-size:13px;list-style:none;padding:0;margin:0 0 12px}
   .grow{flex:1}
   .stack{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  /* --- wavy / glitch motion --- */
+  @keyframes wbWave{0%{background-position:0% 0%,100% 100%,0 0}100%{background-position:100% 40%,0% 60%,260px 0}}
+  @keyframes wbGlitch{0%,86%,100%{text-shadow:none;transform:none}88%{text-shadow:-2px 0 var(--red),2px 0 var(--silver);transform:skewX(-3deg)}91%{text-shadow:2px 0 var(--yellow),-2px 0 var(--silver-hi);transform:translateX(1px)}94%{text-shadow:-1px 0 var(--red),1px 0 var(--silver);transform:none}}
+  @keyframes wbFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+  @keyframes wbFlick{0%,100%{transform:none;filter:none}30%{transform:translateX(-1px) skewX(-2deg)}60%{transform:translateX(1px);filter:brightness(1.12)}}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:60;opacity:.045;background:repeating-linear-gradient(0deg,#fff 0 1px,transparent 1px 3px);mix-blend-mode:overlay}
+  nav.top .brand{animation:wbGlitch 7s steps(1) infinite}
+  .card{animation:wbFloat 9s ease-in-out infinite}
+  .card:nth-of-type(even){animation-delay:-4.5s}
+  .btn:hover{animation:wbFlick .35s steps(2) 1}
+  .beast:hover{animation:wbFlick .5s steps(2) 1}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 </head>
 <body>
@@ -129,7 +144,7 @@
   </div>
   <div class="right">
     <span class="chip silver">Shards <b>{{ wb_wallet.shards }}</b></span>
-    <span class="chip">Cores <b>{{ wb_wallet.cores }}</b></span>
+    <span class="chip acc">Cores <b>{{ wb_wallet.cores }}</b></span>
     <form method="post" action="/logout/" style="display:inline;margin:0">{% csrf_token %}<button class="btn sec sm" type="submit">Sign out</button></form>
   </div>
   {% else %}

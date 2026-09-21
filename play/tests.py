@@ -74,17 +74,14 @@ class BuddyApiTests(TestCase):
     def _hdr(self):
         return {"HTTP_X_WB_NODE_TOKEN": self.node.token}
 
-    def test_slot_requires_verified_beast(self):
+    def test_slot_allows_any_owned_beast(self):
+        # A buddy is a personal companion, so even an unverified (imported) beast can be slotted.
         unv = _beast(self.user, verified=False)
         r = self.client.post("/api/buddy/slot", data=json.dumps({"beast_id": unv.id}),
                              content_type="application/json", **self._hdr())
-        self.assertEqual(r.status_code, 403)
-        ver = _beast(self.user, verified=True)
-        r2 = self.client.post("/api/buddy/slot", data=json.dumps({"beast_id": ver.id}),
-                              content_type="application/json", **self._hdr())
-        self.assertEqual(r2.status_code, 200)
-        self.assertEqual(r2.json()["buddy"]["beast"]["id"], ver.id)
-        self.assertEqual(r2.json()["buddy"]["carrier"]["id"], self.node.id)  # this device is the carrier
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["buddy"]["beast"]["id"], unv.id)
+        self.assertEqual(r.json()["buddy"]["carrier"]["id"], self.node.id)  # this device is the carrier
 
     def test_paywall_blocks_unsubscribed(self):
         self.wallet.subscribed = False

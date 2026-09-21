@@ -1006,11 +1006,11 @@ def api_buddy_slot(request):
         data = json.loads(request.body.decode("utf-8"))
     except Exception:
         return JsonResponse({"error": "bad json"}, status=400)
+    # Any owned beast can be a buddy - it's a personal companion (not traded or laddered), and away-events
+    # don't scale with its stats, so there's no anti-cheat reason to require a verified beast here.
     beast = OwnedBeast.objects.filter(id=data.get("beast_id"), user=node.user, status="owned").first()
     if not beast:
         return JsonResponse({"error": "no such owned beast"}, status=404)
-    if not beast.verified:
-        return JsonResponse({"error": "a buddy must be a verified beast (caught through a node)"}, status=403)
     b, _ = Buddy.objects.get_or_create(user=node.user)
     b.beast = beast
     b.carrier = node  # this device is now carrying the buddy

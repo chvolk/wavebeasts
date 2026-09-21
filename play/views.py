@@ -76,8 +76,15 @@ def landing(request):
     return render(request, "landing.html")
 
 
+def _agent_setup_context():
+    context = {"site_url": settings.SITE_URL.rstrip("/")}
+    for mode in ("node", "local"):
+        context[f"{mode}_prompt"] = render_to_string(f"agent-prompts/{mode}.txt", context)
+    return context
+
+
 def download(request):
-    return render(request, "download.html", {"nav": "download"})
+    return render(request, "download.html", {"nav": "download", **_agent_setup_context()})
 
 
 def privacy(request):
@@ -101,8 +108,7 @@ def docs(request, page="overview"):
                "wiki_previous": pages[index - 1] if index else None,
                "wiki_next": pages[index + 1] if index + 1 < len(pages) else None}
     if page == "ai-setup":
-        context["node_prompt"] = render_to_string("agent-prompts/node.txt", context)
-        context["local_prompt"] = render_to_string("agent-prompts/local.txt", context)
+        context.update(_agent_setup_context())
     return render(request, "docs.html", context)
 
 

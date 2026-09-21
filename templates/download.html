@@ -1,6 +1,9 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Download · WaveBeasts{% endblock %}
 {% block content %}
+<link rel="stylesheet" href="{% static 'wiki.css' %}">
+<script src="{% static 'wiki.js' %}" defer></script>
 <div class="card" style="margin-bottom:24px"><div class="eyebrow">iOS / Android / Desktop</div><h2>Install the web app</h2><p class="muted">Keep your online beastiary, shop, and battles on your home screen. Online features need a connection.</p><button id="pwa-install" class="btn" type="button" hidden>Install WaveBeasts</button><p id="pwa-install-hint" class="muted" hidden></p><noscript><p>Use your browser’s Install app or Add to Home Screen option.</p></noscript></div>
 {% with base="https://github.com/chvolk/wavebeast-dl/releases/latest/download" %}
 <style>
@@ -18,6 +21,17 @@
 <h1 style="margin:0 0 4px">Download WaveBeast</h1>
 <p class="muted" style="margin:0 0 20px">One engine, every platform. Local play is free - catch, train and
 battle. Link this account to trade &amp; battle worldwide.</p>
+
+<section class="card wiki-article" id="ai-setup" style="margin-bottom:24px;border-color:var(--red)">
+  <div class="eyebrow">Let your agent handle setup</div>
+  <h2 style="margin-top:10px">Set up with an AI agent</h2>
+  <p class="muted">Copy a ready-to-use prompt to install the local game and GUI, or connect a listener node to your online account.</p>
+  <details>
+    <summary style="cursor:pointer;color:var(--red-hi);padding:10px 0">View and copy the setup instructions</summary>
+    {% include "wiki/ai-setup.html" %}
+  </details>
+  <p><a href="/docs/ai-setup/">Open the full AI setup guide ↗</a></p>
+</section>
 
 <div class="dlgrid">
   <div class="dltile">
@@ -66,7 +80,7 @@ curl -L {{ base }}/wavebeast-macos-amd64 -o wavebeast && chmod +x wavebeast && .
 
 <div class="section-label">Then</div>
 <div class="card muted">
-  Open <code>http://localhost:8777</code> and play. Scans yield about once a minute. To grow your online
+  Open <code>http://localhost:8777</code> and play. Scans yield about once every five minutes. To grow your online
   beastiary, create a node in <a href="/me/">your profile</a>, paste its token into the app's WORLD tab, and
   submit snapshots or upload your local catches. Source &amp; releases on
   <a href="https://github.com/chvolk/wavebeast-dl" target="_blank" rel="noopener">GitHub</a>.

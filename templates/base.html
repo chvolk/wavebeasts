@@ -177,7 +177,6 @@
     <a href="/battle/" class="{% if nav == 'battle' %}active{% endif %}">Battle</a>
     <a href="/nodes/" class="{% if nav == 'nodes' %}active{% endif %}">Nodes</a>
     <a href="/docs/" class="{% if nav == 'docs' %}active{% endif %}">How to</a>
-    <a href="/docs/ai-setup/">AI setup ↗</a>
     <a href="/download/" class="{% if nav == 'download' %}active{% endif %}">Download</a>
   </div>
   <div class="right">
@@ -191,7 +190,6 @@
   {% else %}
   <div class="right">
     <a class="btn sec sm" href="/docs/">How to</a>
-    <a class="btn sec sm" href="/docs/ai-setup/">AI setup ↗</a>
     <a class="btn sec sm" href="/download/">Download</a>
     <a class="btn sec sm" href="{% if clerk_pk %}/sign-in/{% else %}/login/{% endif %}">Sign in</a>
     <a class="btn sm" href="{% if clerk_pk %}/sign-up/{% else %}/signup/{% endif %}">Create account</a>

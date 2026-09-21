@@ -1,7 +1,7 @@
 """Server-authoritative Buddy logic: care effects, vital decay, relationship, and rate-limited away-events.
 
 Everything here mutates the Buddy (and, for training/combat, the beast + wallet) on the server. The client
-never sends stats — it calls an action and renders whatever comes back — so the whole system is cheat-proof.
+never sends stats - it calls an action and renders whatever comes back - so the whole system is cheat-proof.
 """
 import random
 from datetime import timedelta

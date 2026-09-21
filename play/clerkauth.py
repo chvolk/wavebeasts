@@ -1,7 +1,7 @@
 """Verify Clerk session JWTs so the site can trust a Clerk-authenticated user. Clerk runs the sign-in/up
 UI on the frontend; after sign-in the page hands us the session token, we verify it here (RS256 against
 Clerk's JWKS), then map it to a Django user and start a normal Django session. This keeps all existing
-@login_required / request.user code working — Clerk is just the sign-in provider."""
+@login_required / request.user code working - Clerk is just the sign-in provider."""
 import base64
 import time
 

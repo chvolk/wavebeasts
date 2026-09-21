@@ -16,10 +16,10 @@ class Wallet(models.Model):
     cores = models.IntegerField(default=0)
     team_ids = models.JSONField(default=list)
     # Free tier by default. Paid unlocks the web-service layer: multi-node, trading, battles, async
-    # ladder, and the Buddy system. (Existing accounts were grandfathered to paid — see migration 0009.)
+    # ladder, and the Buddy system. (Existing accounts were grandfathered to paid - see migration 0009.)
     subscribed = models.BooleanField(default=False)  # driven by the Stripe subscription status below
     stripe_customer_id = models.CharField(max_length=64, blank=True, default="")
-    subscription_status = models.CharField(max_length=32, blank=True, default="")  # active/trialing/past_due/canceled/…
+    subscription_status = models.CharField(max_length=32, blank=True, default="")  # active/trialing/past_due/canceled/...
     onboarded = models.BooleanField(default=False)
     last_sync = models.DateTimeField(null=True, blank=True)  # once-per-day standardize-old-beasts run
 
@@ -39,8 +39,8 @@ class InventoryItem(models.Model):
 class Buddy(models.Model):
     """The one slotted companion on an account (paid feature). You carry it in a registered app. Care
     raises its vitals, mood and relationship; while carried it occasionally reports
-    away-events (resources / XP from off-screen scraps). All state is server-authoritative — the client
-    only ever calls actions and displays what the site returns — so none of it is cheatable."""
+    away-events (resources / XP from off-screen scraps). All state is server-authoritative - the client
+    only ever calls actions and displays what the site returns - so none of it is cheatable."""
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="buddy")
     beast = models.ForeignKey("OwnedBeast", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     carrier = models.ForeignKey("Node", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")  # which device carries it now (UX/anchor)
@@ -60,7 +60,7 @@ class Buddy(models.Model):
 
 class Node(models.Model):
     """A listener node the player signs in: it uploads rate-limited sensor SNAPSHOTS to this account.
-    It need not run the full engine — just sensors -> ScanBundle -> POST /api/snapshot with its token."""
+    It need not run the full engine - just sensors -> ScanBundle -> POST /api/snapshot with its token."""
     KIND = [("phone", "phone"), ("edi", "edi"), ("bishop", "bishop"), ("pi", "pi"), ("pc", "pc")]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="nodes")
     name = models.CharField(max_length=256)  # free text, emoji allowed
@@ -169,7 +169,7 @@ class TradeOffer(models.Model):
 
 class LadderTeam(models.Model):
     """A player's submitted async-PvP team: a frozen snapshot of up to 3 fighters + their rating, so it
-    can be battled by others even while the player is offline (Super Auto Pets style)."""
+    can be battled by others even while the player is offline."""
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ladder")
     fighters = models.JSONField(default=list)  # [{species, individual}, ...]
     mmr = models.IntegerField(default=1000)

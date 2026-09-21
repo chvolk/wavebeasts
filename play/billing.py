@@ -2,7 +2,7 @@
 paid features. Test-mode keys today; the same code works in live mode when the prod keys are set.
 
 When settings.STRIPE_MANAGED_PAYMENTS is on, Checkout runs in Managed Payments mode (Stripe is the
-merchant of record and calculates/remits tax) — that adds managed_payments[enabled]=true and requires the
+merchant of record and calculates/remits tax) - that adds managed_payments[enabled]=true and requires the
 STRIPE_PREVIEW_VERSION API version + an eligible tax_code on the product."""
 import stripe
 from django.conf import settings
@@ -46,14 +46,14 @@ def ensure_product_tax_code(price=None):
 def ensure_customer(wallet, user):
     _init()
     if wallet.stripe_customer_id:
-        # A stored id from a different mode (test↔live) or a deleted customer won't exist under the
+        # A stored id from a different mode (test to live) or a deleted customer won't exist under the
         # current key. Verify it; recreate if it's gone rather than failing checkout.
         try:
             c = stripe.Customer.retrieve(wallet.stripe_customer_id)
             if not getattr(c, "deleted", False):
                 return wallet.stripe_customer_id
         except stripe.error.InvalidRequestError:
-            pass  # No such customer → fall through and make a fresh one
+            pass  # No such customer -> fall through and make a fresh one
     c = stripe.Customer.create(metadata={"user_id": str(user.id), "username": user.username})
     wallet.stripe_customer_id = c.id
     wallet.save(update_fields=["stripe_customer_id"])
@@ -92,7 +92,7 @@ def apply_event(event):
     """Update the matching wallet from a Stripe webhook event. Returns True if a wallet was updated."""
     from .models import Wallet
 
-    # construct_event returns a StripeObject, whose .get() raises in stripe-python 15.x — normalize to a
+    # construct_event returns a StripeObject, whose .get() raises in stripe-python 15.x - normalize to a
     # plain dict so attribute access is uniform (tests pass a dict; the live webhook passes a StripeObject).
     if not isinstance(event, dict):
         event = event.to_dict()  # StripeObject -> fully nested plain dict (data/object become dicts too)

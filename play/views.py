@@ -574,7 +574,7 @@ def ladder_enter(request):
         lt, _ = LadderTeam.objects.get_or_create(user=request.user)
         lt.fighters = fighters
         lt.save()
-        request.session["ladder_msg"] = "On the ladder — other trainers will battle your team while you're away."
+        request.session["ladder_msg"] = "On the ladder - other trainers will battle your team while you're away."
     return redirect("battle")
 
 
@@ -589,7 +589,7 @@ def ladder_run(request):
         return redirect("battle")
     opponents = list(LadderTeam.objects.exclude(user=request.user).exclude(fighters=[]).select_related("user"))
     if not opponents:
-        request.session["ladder_msg"] = "No opponents yet — check back once others join the ladder."
+        request.session["ladder_msg"] = "No opponents yet - check back once others join the ladder."
         return redirect("battle")
     random.shuffle(opponents)
     wins = 0
@@ -609,7 +609,7 @@ def ladder_run(request):
 def set_team(request):
     if request.method == "POST":
         ids = request.POST.getlist("beast_ids")[:3]
-        # Only verified beasts fight on the ladder/gyms — no modded stats in competitive play.
+        # Only verified beasts fight on the ladder/gyms - no modded stats in competitive play.
         valid = list(OwnedBeast.objects.filter(user=request.user, status="owned", verified=True, id__in=ids).values_list("id", flat=True))
         w = _wallet(request.user)
         w.team_ids = [str(i) for i in valid]
@@ -731,10 +731,10 @@ def api_import(request):
             name=sp.get("name", "?"), rarity=ind.get("rarity", "common"), shiny=bool(ind.get("shiny")),
             level=lvl, status="owned", verified=False, species_json=sp, individual_json=ind)
         imported += 1
-    # verified=False: imported beasts carry client-claimed stats, so they're collection-only — never
+    # verified=False: imported beasts carry client-claimed stats, so they're collection-only - never
     # tradeable or laddered. To get a legit tradeable copy, submit the scan via a node (site re-rolls it).
     return JsonResponse({"ok": True, "imported": imported, "skipped": skipped,
-                         "note": "imported to your collection (unverified — not tradeable; submit scans via a node for verified beasts)"})
+                         "note": "imported to your collection (unverified - not tradeable; submit scans via a node for verified beasts)"})
 
 
 SYNC_COOLDOWN_SEC = 86400  # one whole-account sync run per day
@@ -742,8 +742,8 @@ SYNC_COOLDOWN_SEC = 86400  # one whole-account sync run per day
 
 @csrf_exempt
 def api_sync(request):
-    """Standardize older verified beasts to the current generation — backfill new fields (e.g. nature),
-    bump their id_version — so they pick up updates we ship over time. Free tier; token auth; verified
+    """Standardize older verified beasts to the current generation - backfill new fields (e.g. nature),
+    bump their id_version - so they pick up updates we ship over time. Free tier; token auth; verified
     (non-modded) beasts only; each beast upgrades once per version; the whole run is once per day."""
     node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
     if not node:
@@ -779,7 +779,7 @@ def api_sync(request):
 
 @csrf_exempt
 def api_release(request):
-    """Release a beast back to the waves — permanently removes it from the account (node-token auth,
+    """Release a beast back to the waves - permanently removes it from the account (node-token auth,
     free). Can't release your slotted buddy; also clears it from your team and any open trade listing."""
     node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
     if not node:
@@ -863,7 +863,7 @@ def api_buy(request):
 @csrf_exempt
 def api_beasts(request):
     """The account's beasts (owned + wild sightings), inventory and currency (node-token auth). Free to
-    read — how a companion app shows your collection, bag, and picks a buddy. Sprites: /sprite/<id>.png."""
+    read - how a companion app shows your collection, bag, and picks a buddy. Sprites: /sprite/<id>.png."""
     node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
     if not node:
         return JsonResponse({"error": "bad node token"}, status=403)
@@ -890,7 +890,7 @@ def _beast_row(b):
 @csrf_exempt
 def api_catch(request):
     """Catch a wild account sighting with a drive from your bag (node-token auth). Server rolls the
-    chance and consumes the drive — outcome isn't client-controlled. Part of the free base loop."""
+    chance and consumes the drive - outcome isn't client-controlled. Part of the free base loop."""
     node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
     if not node:
         return JsonResponse({"error": "bad node token"}, status=403)
@@ -918,9 +918,9 @@ def api_catch(request):
                          "remaining": inv.qty, "beast": _beast_row(beast)})
 
 
-# ---- Buddy API (paid) — the tamagotchi companion custom apps carry -------------------------------
+# ---- Buddy API (paid) - the tamagotchi companion custom apps carry -------------------------------
 # All state is server-authoritative and node-token authed. Care raises vitals/mood/relationship; while
-# slotted, the buddy earns rate-limited away-events (resources/XP) — faster the more it loves you.
+# slotted, the buddy earns rate-limited away-events (resources/XP) - faster the more it loves you.
 
 def _buddy_auth(request):
     """Returns (node, error_response). Node-token auth + subscription (paid) gate."""
@@ -983,7 +983,7 @@ def api_buddy_care(request):
     b, _ = Buddy.objects.get_or_create(user=node.user)
     if not b.beast_id:
         return JsonResponse({"error": "no buddy slotted"}, status=409)
-    b.carrier = node  # caring for it from this device → it's the carrier
+    b.carrier = node  # caring for it from this device -> it's the carrier
     try:
         data = json.loads(request.body.decode("utf-8"))
     except Exception:
@@ -1038,7 +1038,7 @@ def _apply_beast(node, res):
     if OwnedBeast.objects.filter(user=user, status="owned").count() == 0:
         _create_beast(node, sp, ind, "owned")  # first catch is free
         return f"caught (free) {sp.get('name')} [{ind.get('rarity')}]"
-    # You have a party — a wild sometimes challenges you to a battle first.
+    # You have a party - a wild sometimes challenges you to a battle first.
     party = _scan_party(user)
     if party and random.random() < 0.35:
         try:
@@ -1048,6 +1048,6 @@ def _apply_beast(node, res):
         if not won:
             return f"{sp.get('name')} bested your team and fled"
         _create_beast(node, sp, ind, "wild")
-        return f"battled & beat {sp.get('name')} [{ind.get('rarity')}] — catch it with a drive"
+        return f"battled & beat {sp.get('name')} [{ind.get('rarity')}] - catch it with a drive"
     _create_beast(node, sp, ind, "wild")
     return f"sighted {sp.get('name')} [{ind.get('rarity')}]"

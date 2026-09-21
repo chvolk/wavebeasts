@@ -210,7 +210,7 @@
     var btn=document.getElementById('clerk-userbtn');
     var fb=document.getElementById('clerk-signout-fallback');
     if(btn && Clerk.user){ Clerk.mountUserButton(btn, {afterSignOutUrl:'/logout/'}); }
-    else if(fb){ fb.style.display='inline'; }  // no live Clerk session — always leave a way to sign out
+    else if(fb){ fb.style.display='inline'; }  // no live Clerk session - always leave a way to sign out
     if(typeof window.__wbClerkReady==='function'){ window.__wbClerkReady(Clerk); }
   });
 </script>
@@ -218,7 +218,7 @@
 
 <div id="wb-cookie" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:80;background:var(--panel);border-top:1px solid var(--line);padding:14px 18px;box-shadow:0 -8px 28px rgba(0,0,0,.45)">
   <div style="max-width:960px;margin:0 auto;display:flex;gap:14px;flex-wrap:wrap;align-items:center">
-    <span style="flex:1;min-width:220px;color:var(--ink);font-size:13.5px">We use only essential cookies — to keep you signed in and secure. No ads, no third-party tracking, and we never sell your data. See our <a href="/privacy/" style="color:var(--red)">Privacy Policy</a>.</span>
+    <span style="flex:1;min-width:220px;color:var(--ink);font-size:13.5px">We use only essential cookies - to keep you signed in and secure. No ads, no third-party tracking, and we never sell your data. See our <a href="/privacy/" style="color:var(--red)">Privacy Policy</a>.</span>
     <button class="btn sec sm" onclick="wbCookie('reject')">Reject</button>
     <button class="btn sm" onclick="wbCookie('accept')">Accept</button>
   </div>

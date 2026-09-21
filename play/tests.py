@@ -25,8 +25,8 @@ class BuddyLogicTests(TestCase):
         self.wallet = Wallet.objects.get_or_create(user=self.user)[0]
 
     def test_event_interval_scales_with_relationship(self):
-        self.assertEqual(buddymod.event_interval_min(100), 10)   # loves you → fastest
-        self.assertEqual(buddymod.event_interval_min(0), 60)     # wary → slowest
+        self.assertEqual(buddymod.event_interval_min(100), 10)   # loves you -> fastest
+        self.assertEqual(buddymod.event_interval_min(0), 60)     # wary -> slowest
 
     def test_care_applies_effects_and_cooldown(self):
         b = Buddy.objects.create(user=self.user, beast=_beast(self.user), hunger=20, relationship=0)
@@ -34,7 +34,7 @@ class BuddyLogicTests(TestCase):
         self.assertTrue(r1.get("ok"))
         self.assertGreater(b.hunger, 20)
         self.assertEqual(b.relationship, 2)
-        r2 = buddymod.apply_care(b, "feed")   # immediate re-feed → cooldown
+        r2 = buddymod.apply_care(b, "feed")   # immediate re-feed -> cooldown
         self.assertEqual(r2.get("error"), "cooldown")
         self.assertGreater(r2.get("retry_after_sec", 0), 0)
 
@@ -118,7 +118,7 @@ class AuthBillingTests(TestCase):
         r = self.client.post("/auth/clerk", data=json.dumps({"token": "x"}), content_type="application/json")
         self.assertEqual(r.status_code, 200)
         self.assertTrue(User.objects.filter(username="user_abc").exists())
-        self.assertEqual(r.json()["redirect"], "/onboarding/")  # new user → onboarding first
+        self.assertEqual(r.json()["redirect"], "/onboarding/")  # new user -> onboarding first
 
     @patch("play.clerkauth.verify_clerk_token")
     def test_auth_clerk_rejects_bad_token(self, mv):
@@ -177,7 +177,7 @@ class ManagedPaymentsTests(TestCase):
     def test_apply_event_handles_stripeobject_and_flips_subscribed(self):
         import stripe
         self.wallet.stripe_customer_id = "cus_x"; self.wallet.subscribed = False; self.wallet.save()
-        # A real StripeObject, exactly what construct_event returns (NOT a dict) — this is what broke live.
+        # A real StripeObject, exactly what construct_event returns (NOT a dict) - this is what broke live.
         evt = stripe.Event.construct_from(
             {"type": "checkout.session.completed", "data": {"object": {"customer": "cus_x"}}}, "sk_test")
         self.assertNotIsInstance(evt, dict)

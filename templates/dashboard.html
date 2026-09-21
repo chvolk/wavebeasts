@@ -47,19 +47,19 @@
   {% for b in owned %}
   <div class="card">
     <img src="/sprite/{{ b.id }}.png" alt="">
-    <div><b>{{ b.name }}</b>{% if b.shiny %} ✦{% endif %}</div>
+    <div><b>{{ b.name }}</b>{% if b.shiny %}{% endif %}</div>
     <div class="r-{{ b.rarity }}">{{ b.rarity }} · Lv {{ b.level }}</div>
   </div>
   {% empty %}<p class="muted">No caught beasts yet.</p>{% endfor %}
 </div>
 
 {% if wild %}
-<h2>Wild sightings — catch them ({{ wild|length }})</h2>
+<h2>Wild sightings - catch them ({{ wild|length }})</h2>
 <div class="grid">
   {% for b in wild %}
   <div class="card">
     <img src="/sprite/{{ b.id }}.png" alt="">
-    <div><b>{{ b.name }}</b>{% if b.shiny %} ✦{% endif %}</div>
+    <div><b>{{ b.name }}</b>{% if b.shiny %}{% endif %}</div>
     <div class="r-{{ b.rarity }}">{{ b.rarity }}</div>
     <form method="post" action="/beast/{{ b.id }}/catch" style="margin-top:6px">{% csrf_token %}
       <select name="drive"><option>spark_drive</option><option>pulse_drive</option><option>surge_drive</option><option>nova_drive</option></select>

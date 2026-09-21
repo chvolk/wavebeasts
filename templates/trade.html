@@ -16,7 +16,7 @@
     <select name="beast_id" class="grow" style="max-width:320px">
       {% for b in tradeable %}<option value="{{ b.id }}">{{ b.name }} · {{ b.rarity }} · Lv {{ b.level }}</option>{% endfor %}
     </select>
-    <input name="note" class="grow" maxlength="200" placeholder="optional note — what you're after">
+    <input name="note" class="grow" maxlength="200" placeholder="optional note - what you're after">
     <button class="btn" type="submit">List it</button>
   </form>
   {% else %}<p class="muted" style="margin:0">No un-listed owned beasts to trade yet.</p>{% endif %}
@@ -58,7 +58,7 @@
       {% if o.offered_shards %}<span class="chip silver" style="padding:2px 8px">+{{ o.offered_shards }} shards</span>{% endif %}
       {% if o.offered_cores %}<span class="chip acc" style="padding:2px 8px">+{{ o.offered_cores }} cores</span>{% endif %}
     </td>
-    <td><b>{{ o.listing.beast.name }}</b> ({{ o.listing.beast.rarity }}) — {{ o.listing.user.username }}</td>
+    <td><b>{{ o.listing.beast.name }}</b> ({{ o.listing.beast.rarity }}) - {{ o.listing.user.username }}</td>
     <td style="text-align:right"><form method="post" action="/trade/offer/{{ o.id }}/withdraw" style="display:inline">{% csrf_token %}<button class="btn sec sm" type="submit">Withdraw</button></form></td>
   </tr>
   {% endfor %}
@@ -94,7 +94,7 @@
     <div class="nm">{{ l.beast.name }}</div>
     <div class="ty">{{ l.beast.types_display }}</div>
     <span class="tag rt-{{ l.beast.rarity }}">{{ l.beast.rarity }}</span>
-    <div class="dim" style="font-size:11px;margin-top:4px">by {{ l.user.username }}{% if l.note %} — "{{ l.note }}"{% endif %}</div>
+    <div class="dim" style="font-size:11px;margin-top:4px">by {{ l.user.username }}{% if l.note %} - "{{ l.note }}"{% endif %}</div>
     {% if tradeable or wallet.shards or wallet.cores %}
     <details style="margin-top:8px;text-align:left">
       <summary class="btn sm" style="cursor:pointer;list-style:none;text-align:center">Make offer</summary>
@@ -102,7 +102,7 @@
         <label style="margin:0">Beasts (up to {{ max_beasts }})</label>
         {% for n in "123"|make_list %}
         <select name="beast_id" style="padding:6px;font-size:12px">
-          <option value="">— {% if forloop.first %}beast{% else %}add another{% endif %} —</option>
+          <option value="">- {% if forloop.first %}beast{% else %}add another{% endif %} -</option>
           {% for b in tradeable %}<option value="{{ b.id }}">{{ b.name }} ({{ b.rarity }} Lv{{ b.level }})</option>{% endfor %}
         </select>
         {% endfor %}

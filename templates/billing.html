@@ -7,15 +7,15 @@
 
   {% if active %}
   <div class="card" style="border-color:var(--yellow)">
-    <b style="color:var(--yellow)">You're Premium ✓</b>
+    <b style="color:var(--yellow)">You're Premium</b>
     <p class="muted" style="margin:6px 0 10px">Status: {{ wallet.subscription_status|default:"active" }}. Thanks for
     supporting WaveBeasts!</p>
     <div class="section-label" style="margin:8px 0 8px">Your perks</div>
     <ul style="margin:0 0 12px;padding-left:18px;color:var(--ink);line-height:1.7">
-      <li><b>Trading</b> — list beasts and offer up to 3 beasts plus shards/cores per deal</li>
-      <li><b>Battles</b> and the <b>async ladder</b> — ranked PvP vs other players' teams</li>
-      <li><b>Buddy companion</b> — carry, feed, train and level a slotted beast</li>
-      <li><b>Verified uploads</b> — submit scans through nodes for tradeable beasts</li>
+      <li><b>Trading</b> - list beasts and offer up to 3 beasts plus shards/cores per deal</li>
+      <li><b>Battles</b> and the <b>async ladder</b> - ranked PvP vs other players' teams</li>
+      <li><b>Buddy companion</b> - carry, feed, train and level a slotted beast</li>
+      <li><b>Verified uploads</b> - submit scans through nodes for tradeable beasts</li>
       <li><b>Node boosts</b> and up to <b>12 nodes</b> (vs. 1 on free)</li>
     </ul>
     <a class="btn sec sm" href="/billing/portal">Manage or cancel subscription</a>
@@ -41,7 +41,7 @@
     .plan .price span{font-size:15px;font-weight:600;color:var(--mut)}
     .plan .sub{font-size:12px;color:var(--dim);margin:4px 0 0;min-height:16px}
     .plan .go{margin-top:14px}
-    /* Annual — the highlighted best-value tile with an animated accent ring + shine */
+    /* Annual - the highlighted best-value tile with an animated accent ring + shine */
     .plan.best{border-color:var(--yellow);background:linear-gradient(180deg,#171509,#0f0e0a)}
     .plan.best:hover{border-color:var(--yellow-hi);box-shadow:0 16px 44px rgba(230,195,77,.22)}
     .plan.best .price{color:var(--yellow-hi)}
@@ -77,7 +77,7 @@
     </form>
   </div>
   <p class="muted" style="font-size:12px;margin-top:14px">Secure checkout by Stripe. Cancel anytime. No ads, and we
-  never sell your data — see our <a href="/privacy/" style="color:var(--red)">Privacy Policy</a>.</p>
+  never sell your data - see our <a href="/privacy/" style="color:var(--red)">Privacy Policy</a>.</p>
   {% endif %}
 </div>
 {% endblock %}

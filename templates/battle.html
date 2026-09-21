@@ -67,7 +67,7 @@
       <form method="post" action="/ladder/enter">{% csrf_token %}<button class="btn sec" type="submit">Update team on ladder</button></form>
     </div>
   {% else %}
-    <p class="muted" style="margin-top:0">Submit your team to the ranked ladder. It gets battled by other trainers even while you're offline — results and rating land here.</p>
+    <p class="muted" style="margin-top:0">Submit your team to the ranked ladder. It gets battled by other trainers even while you're offline - results and rating land here.</p>
     <form method="post" action="/ladder/enter">{% csrf_token %}<button class="btn" type="submit">Enter the ladder</button></form>
   {% endif %}
   {% if ladder_recent %}
@@ -97,7 +97,7 @@
   {% for r in records %}
   <tr>
     <td style="color:{% if r.result == 'win' %}var(--gold){% elif r.result == 'loss' %}var(--red){% else %}var(--silver){% endif %};text-transform:capitalize">{{ r.result }}</td>
-    <td>{{ r.opponent }}</td><td>{{ r.turns }}</td><td>{% if r.reward %}+{{ r.reward }}{% else %}—{% endif %}</td>
+    <td>{{ r.opponent }}</td><td>{{ r.turns }}</td><td>{% if r.reward %}+{{ r.reward }}{% else %}-{% endif %}</td>
   </tr>
   {% endfor %}
 </table>

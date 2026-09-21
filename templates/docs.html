@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Docs · WaveBeasts{% endblock %}
-{% block desc %}How WaveBeasts works — scanning, beasts, types, battle mechanics, and setting up listener nodes from the CLI.{% endblock %}
+{% block desc %}How WaveBeasts works - scanning, beasts, types, battle mechanics, and setting up listener nodes from the CLI.{% endblock %}
 {% block content %}
 {% with base=request.scheme|add:"://"|add:request.get_host %}
 <style>
@@ -66,8 +66,8 @@ how to run your own listener nodes.</p>
 
   <div class="doc">
     <h2 id="overview">Overview</h2>
-    <p>WaveBeasts is a scan-to-creature collector. Your devices sense the invisible world around you — Wi-Fi,
-    Bluetooth, RF, light, sound, motion — and each unique reading is distilled into a procedurally generated
+    <p>WaveBeasts is a scan-to-creature collector. Your devices sense the invisible world around you - Wi-Fi,
+    Bluetooth, RF, light, sound, motion - and each unique reading is distilled into a procedurally generated
     creature with real, server-verified rarity. Catch them, raise a Buddy, and trade &amp; battle other trainers.</p>
     <p class="lead">Local play and one sensor node are free forever. The online layer (trading, battles, the
     async ladder, Buddy, uploads, multi-node fleets) is <a href="#premium">Premium</a>.</p>
@@ -76,17 +76,17 @@ how to run your own listener nodes.</p>
     <p>A <b>scan</b> bundles the signals a device can read into a <code>ScanBundle</code> and submits it. The
     server distills two numbers from it:</p>
     <ul>
-      <li><b>Entropy</b> — how much genuine, varied information the reading carries.</li>
-      <li><b>Coherence</b> (0.4–1.0) — whether the signals reinforce or cancel. Aligned signals reinforce;
+      <li><b>Entropy</b> - how much genuine, varied information the reading carries.</li>
+      <li><b>Coherence</b> (0.4-1.0) - whether the signals reinforce or cancel. Aligned signals reinforce;
       opposed phases, heavy motion, and saturated signals cancel.</li>
     </ul>
-    <p>The <b>effective entropy</b> that drives every roll is <code>entropy × coherence</code> — so more data
+    <p>The <b>effective entropy</b> that drives every roll is <code>entropy × coherence</code> - so more data
     is not a guaranteed win. Each scan resolves to one of three outcomes:</p>
     <ul>
-      <li><b>Beast</b> — a creature appears. This needs an <i>identity</i> signal (QR &gt; barcode &gt; NFC &gt;
+      <li><b>Beast</b> - a creature appears. This needs an <i>identity</i> signal (QR &gt; barcode &gt; NFC &gt;
       image features, or a derived identity from ambient Wi-Fi/sensors). Chance rises with entropy.</li>
-      <li><b>Resource</b> — currency, food, or a drive (see below).</li>
-      <li><b>Nothing</b> — even a good reading can collapse to nothing via destructive interference.</li>
+      <li><b>Resource</b> - currency, food, or a drive (see below).</li>
+      <li><b>Nothing</b> - even a good reading can collapse to nothing via destructive interference.</li>
     </ul>
     <p>Stats are rolled <b>server-side</b> with a per-scan secret nonce, so they can't be predicted, modded, or
     ground out. The species is deterministic from the bundle; the individual is not.</p>
@@ -107,7 +107,7 @@ how to run your own listener nodes.</p>
       <span class="pill t-frost">frost</span><span class="pill t-shade">shade</span><span class="pill t-lumen">lumen</span>
     </p>
     <p>Every beast has one type, with a <b>35% chance of a second (dual) type</b>. <b>Shade</b> and <b>lumen</b>
-    are a mirror pair — each beats the other and resists itself — a light/dark axis orthogonal to the
+    are a mirror pair - each beats the other and resists itself - a light/dark axis orthogonal to the
     elemental wheel.</p>
 
     <h2 id="chart">Type chart</h2>
@@ -127,7 +127,7 @@ how to run your own listener nodes.</p>
     </table>
 
     <h2 id="rarity">Rarity &amp; shinies</h2>
-    <p>Five tiers, weighted by effective entropy — higher entropy shifts the odds toward the top:</p>
+    <p>Five tiers, weighted by effective entropy - higher entropy shifts the odds toward the top:</p>
     <p>
       <span class="pill">common</span><span class="pill" style="color:var(--silver);border-color:#4a4a54">uncommon</span>
       <span class="pill" style="color:var(--silver-hi);border-color:var(--silver)">rare</span>
@@ -145,16 +145,16 @@ how to run your own listener nodes.</p>
       <tr><td>legendary</td><td>16</td><td>0.28×</td></tr>
     </table>
     <p><b>Shinies</b> are a rare alternate colouring, more likely at high entropy. The exact odds are
-    intentionally secret — treat them as very rare.</p>
+    intentionally secret - treat them as very rare.</p>
 
     <h2 id="natures">Natures</h2>
-    <p>Every individual carries one of <b>16 natures</b>. They're personality flavour — they do <b>not</b>
+    <p>Every individual carries one of <b>16 natures</b>. They're personality flavour - they do <b>not</b>
     change stats; apps use them to theme behaviour (e.g. your Buddy's chat tone).</p>
     <p class="lead">Brave · Timid · Playful · Grumpy · Loyal · Curious · Lazy · Fierce · Gentle · Clever · Wild
     · Cheerful · Stoic · Mischievous · Bold · Shy</p>
 
     <h2 id="tribes">Tribes &amp; stats</h2>
-    <p>Beasts have six stats: <b>HP, ATK, DEF, SPD, SP, RES</b> (base values 45–80). Each beast belongs to a
+    <p>Beasts have six stats: <b>HP, ATK, DEF, SPD, SP, RES</b> (base values 45-80). Each beast belongs to a
     <b>tribe</b> that biases two of those stats (+18):</p>
     <table>
       <tr><th>Tribe</th><th>Favours</th></tr>
@@ -165,14 +165,14 @@ how to run your own listener nodes.</p>
       <tr><td>colossus</td><td>HP, DEF</td></tr>
       <tr><td>trickster</td><td>SPD, SP</td></tr>
     </table>
-    <p>Stats scale with <b>level</b> (1→100). XP to the next level is <code>level³ × 15</code>. Beasts evolve
-    through <b>5 forms</b> at levels <b>1 / 16 / 32 / 48 / 64</b>, with stat multipliers 1.0 → 1.25 → 1.55 →
-    1.9 → 2.3.</p>
-    <p class="lead">Tribe passives (e.g. crit or damage perks) are defined but not yet applied in battle —
+    <p>Stats scale with <b>level</b> (1->100). XP to the next level is <code>level³ × 15</code>. Beasts evolve
+    through <b>5 forms</b> at levels <b>1 / 16 / 32 / 48 / 64</b>, with stat multipliers 1.0 -> 1.25 -> 1.55 ->
+    1.9 -> 2.3.</p>
+    <p class="lead">Tribe passives (e.g. crit or damage perks) are defined but not yet applied in battle -
     they're coming in a later update.</p>
 
     <h2 id="battle">Battle mechanics</h2>
-    <p>Battles are <b>3-v-3 auto-battles</b> (Super-Auto-Pets style) and are fully deterministic from a seed.
+    <p>Battles are <b>3-v-3 auto-battles</b> and are fully deterministic from a seed.
     Your team is up to three fighters; in a local scan your "party" is your three highest-level beasts.</p>
     <ul>
       <li><b>Turn order:</b> the higher <b>SPD</b> fighter acts first each round (ties favour the challenger's
@@ -184,11 +184,11 @@ how to run your own listener nodes.</p>
       <li><b>STAB ×1.5</b> when the move's type matches the attacker's type.</li>
       <li><b>× type effectiveness</b> (the <a href="#chart">chart</a> above).</li>
       <li><b>Crit:</b> 6.25% chance for <b>×1.5</b> damage.</li>
-      <li><b>Spread:</b> every hit rolls ×0.85–1.00. Minimum damage is 1.</li>
+      <li><b>Spread:</b> every hit rolls ×0.85-1.00. Minimum damage is 1.</li>
     </ul>
     <p>A side wins when the other is wiped; at the turn cap the win goes to whoever has more total HP remaining
-    (equal → draw). <b>Battle on scan:</b> once you have a party, a wild encounter has a <b>35% chance</b> to
-    challenge you — win and it's weakened and catchable; lose and it flees.</p>
+    (equal -> draw). <b>Battle on scan:</b> once you have a party, a wild encounter has a <b>35% chance</b> to
+    challenge you - win and it's weakened and catchable; lose and it flees.</p>
 
     <h2 id="catching">Catching &amp; drives</h2>
     <p>You catch a weakened/wild beast by spending a <b>drive</b>. Stronger drives multiply your catch chance;
@@ -203,7 +203,7 @@ how to run your own listener nodes.</p>
 
     <h2 id="nodes">What nodes do</h2>
     <p>A <b>node</b> is any device signed in to your account that submits sensor snapshots to it. A node
-    doesn't need the full engine — it just assembles a <code>ScanBundle</code> and POSTs it to
+    doesn't need the full engine - it just assembles a <code>ScanBundle</code> and POSTs it to
     <code>{{ base }}/api/snapshot</code> with its token. Run one on a phone, a Pi, or any PC.</p>
     <ul>
       <li><b>Cadence:</b> ~one snapshot per <b>60 s</b> per node. The server's reply tells the node when it may
@@ -211,7 +211,7 @@ how to run your own listener nodes.</p>
       <li><b>Boosts (Premium):</b> spend <b>1 core</b> to drop a node to a <b>20 s</b> cadence for <b>10 min</b>.</li>
       <li><b>Caps:</b> <b>1</b> node on free, <b>12</b> on Premium. Give each device its own token.</li>
     </ul>
-    <p>Create tokens on the <a href="/nodes/">Nodes</a> page — "Generate app token" for the mobile app, or
+    <p>Create tokens on the <a href="/nodes/">Nodes</a> page - "Generate app token" for the mobile app, or
     "Add node" for anything else. Node creation is web-only (it's tied to your login); everything after is CLI.</p>
 
     <h2 id="cli">Set up a node (CLI)</h2>
@@ -225,7 +225,7 @@ how to run your own listener nodes.</p>
     <code>403</code> = bad token.</p>
 
     <h3>2 · Persistent node (real sensors, on a timer)</h3>
-    <p>The listener client is a single stdlib-only Python file — no dependencies. It reads nearby Wi-Fi (via
+    <p>The listener client is a single stdlib-only Python file - no dependencies. It reads nearby Wi-Fi (via
     <code>nmcli</code>) each cycle and posts on the server's cadence.</p>
     <pre><button class="btn sec sm copybtn" onclick="cp(this)">Copy</button><code>curl -fsSL {{ base }}/download/wavebeast-node.py -o wavebeast-node.py
 WB_NODE_TOKEN=YOUR_TOKEN python3 wavebeast-node.py          # loops forever
@@ -258,14 +258,14 @@ WantedBy=multi-user.target</code></pre>
     <p class="lead">Then: <code>sudo systemctl enable --now wavebeast-node</code></p>
 
     <h2 id="sensors">Custom sensors</h2>
-    <p>Point <code>WB_SIGNALS_CMD</code> at <b>any</b> command that prints a JSON array of signals to stdout —
+    <p>Point <code>WB_SIGNALS_CMD</code> at <b>any</b> command that prints a JSON array of signals to stdout -
     that's how you feed a node from a sensor the client doesn't know about. Each signal is an object:</p>
     <pre><button class="btn sec sm copybtn" onclick="cp(this)">Copy</button><code>{ "kind": "scalar", "strength": 0.0-1.0, "value": { "metric": "co2_ppm", "n": 812 } }</code></pre>
     <p><code>kind</code> is a label (e.g. <code>scalar</code>, <code>wifi</code>, <code>rf</code>);
-    <code>strength</code> is the signal's normalized intensity (0–1, drives entropy); <code>value</code> is any
-    JSON payload. Example — a mmWave presence sensor:</p>
+    <code>strength</code> is the signal's normalized intensity (0-1, drives entropy); <code>value</code> is any
+    JSON payload. Example - a mmWave presence sensor:</p>
     <pre><button class="btn sec sm copybtn" onclick="cp(this)">Copy</button><code>export WB_SIGNALS_CMD='python3 -c "import json,random; print(json.dumps([{\"kind\":\"scalar\",\"strength\":round(random.random(),2),\"value\":{\"metric\":\"mmwave_motion\",\"n\":random.randint(0,100)}}]))"'</code></pre>
-    <p class="lead">Each device is capped at <b>10 custom sensor values</b> per snapshot — enough to be
+    <p class="lead">Each device is capped at <b>10 custom sensor values</b> per snapshot - enough to be
     expressive, not enough to fabricate infinite entropy.</p>
 
     <h2 id="llm">Set up with an AI agent</h2>
@@ -301,9 +301,9 @@ Report the service name, its status, and the first snapshot's outcome.</code></p
     <p>Local play and one node are free forever. <a href="/billing/">Premium</a> ($5/mo or $50/yr) unlocks the
     online layer:</p>
     <ul>
-      <li><b>Trading</b> — the marketplace (offer up to 3 beasts plus shards/cores per deal)</li>
-      <li><b>Battles</b> and the <b>async ladder</b> — ranked PvP</li>
-      <li><b>Buddy companion</b> — carry, feed, train and level a slotted beast</li>
+      <li><b>Trading</b> - the marketplace (offer up to 3 beasts plus shards/cores per deal)</li>
+      <li><b>Battles</b> and the <b>async ladder</b> - ranked PvP</li>
+      <li><b>Buddy companion</b> - carry, feed, train and level a slotted beast</li>
       <li><b>Verified uploads</b>, <b>node boosts</b>, and up to <b>12 nodes</b></li>
     </ul>
   </div>
@@ -312,7 +312,7 @@ Report the service name, its status, and the first snapshot's outcome.</code></p
 <script>
   function cp(btn){
     var code=btn.parentElement.querySelector('code'); var t=code?code.innerText:'';
-    var done=function(){ var o=btn.textContent; btn.textContent='Copied ✓'; setTimeout(function(){btn.textContent=o;},1400); };
+    var done=function(){ var o=btn.textContent; btn.textContent='Copied'; setTimeout(function(){btn.textContent=o;},1400); };
     if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(done,done); }
     else { try{var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove();done();}catch(e){} }
   }

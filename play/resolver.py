@@ -10,7 +10,7 @@ RESOLVER = os.environ.get("WAVEBEAST_RESOLVER", "http://bishop.home:8777")
 
 def generate(bundle: dict, roll_nonce: str = "") -> dict:
     """Resolve a scan bundle to a beast. Pass roll_nonce (a server secret + random) to make the
-    individual roll server-authoritative — stats the client can't predict, mod, or grind. Species stays
+    individual roll server-authoritative - stats the client can't predict, mod, or grind. Species stays
     deterministic from the bundle's identity regardless."""
     headers = {"X-WB-Roll-Nonce": roll_nonce} if roll_nonce else {}
     r = requests.post(f"{RESOLVER}/generate", json=bundle, headers=headers, timeout=15)
@@ -25,14 +25,14 @@ def render(palette, recipe, shiny: bool) -> bytes:
 
 
 def capabilities() -> dict:
-    """Engine capabilities incl. id_version (current generation) and the natures list — used by /api/sync."""
+    """Engine capabilities incl. id_version (current generation) and the natures list - used by /api/sync."""
     r = requests.get(f"{RESOLVER}/capabilities", timeout=15)
     r.raise_for_status()
     return r.json()
 
 
 def shop() -> dict:
-    """The item catalog (id, name, cost_kind, cost_amt, ...) — the single source of truth for prices, so
+    """The item catalog (id, name, cost_kind, cost_amt, ...) - the single source of truth for prices, so
     the site validates purchases against it rather than trusting a client."""
     r = requests.get(f"{RESOLVER}/economy/shop", timeout=15)
     r.raise_for_status()

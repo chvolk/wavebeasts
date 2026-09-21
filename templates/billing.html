@@ -6,8 +6,8 @@
   {% if msg %}<div class="card" style="border-color:var(--red);color:var(--red)">{{ msg }}</div>{% endif %}
 
   {% if active %}
-  <div class="card" style="border-color:var(--acc)">
-    <b style="color:var(--acc)">You're Premium ✓</b>
+  <div class="card" style="border-color:var(--yellow)">
+    <b style="color:var(--yellow)">You're Premium ✓</b>
     <p class="muted" style="margin:6px 0 10px">Status: {{ wallet.subscription_status|default:"active" }}. Thanks for
     supporting WaveBeasts!</p>
     <div class="section-label" style="margin:8px 0 8px">Your perks</div>
@@ -23,22 +23,57 @@
     can update your card or cancel anytime. Cancelling keeps Premium until the end of the paid period.</p>
   </div>
   {% else %}
-  <p class="muted" style="margin:6px 0 16px">Local play and one sensor node are free forever. Premium unlocks the
+  <p class="muted" style="margin:6px 0 18px">Local play and one sensor node are free forever. Premium unlocks the
   online layer: <b>trading, battles, the async ladder, the Buddy companion,</b> uploads, node boosts, and up to
   <b>12 nodes</b>.</p>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-    <form method="post" action="/billing/checkout" class="card" style="text-align:center">
+  <style>
+    .plans{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .plan{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:stretch;text-align:center;
+      background:linear-gradient(180deg,var(--panel),#0e0e11);border:1px solid var(--line2);border-radius:16px;
+      padding:18px 16px 16px;box-shadow:var(--shadow);cursor:pointer;
+      transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
+      animation:planIn .5s cubic-bezier(.2,.7,.2,1) both}
+    .plan:nth-child(2){animation-delay:.08s}
+    .plan:hover{transform:translateY(-5px);border-color:var(--silver);box-shadow:0 16px 40px rgba(0,0,0,.55)}
+    .plan .pname{font-family:'Space Grotesk';font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:var(--mut)}
+    .plan .price{font-family:'Space Grotesk';font-size:40px;font-weight:800;line-height:1.05;margin:8px 0 0;color:var(--silver-hi)}
+    .plan .price span{font-size:15px;font-weight:600;color:var(--mut)}
+    .plan .sub{font-size:12px;color:var(--dim);margin:4px 0 0;min-height:16px}
+    .plan .go{margin-top:14px}
+    /* Annual — the highlighted best-value tile with an animated accent ring + shine */
+    .plan.best{border-color:var(--yellow);background:linear-gradient(180deg,#171509,#0f0e0a)}
+    .plan.best:hover{border-color:var(--yellow-hi);box-shadow:0 16px 44px rgba(230,195,77,.22)}
+    .plan.best .price{color:var(--yellow-hi)}
+    .plan.best::before{content:"";position:absolute;inset:-1px;border-radius:16px;padding:1px;pointer-events:none;
+      background:linear-gradient(120deg,transparent 20%,rgba(255,221,107,.75),transparent 80%);
+      background-size:220% 220%;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+      -webkit-mask-composite:xor;mask-composite:exclude;animation:planRing 3.6s linear infinite}
+    .ribbon{position:absolute;top:12px;right:-30px;transform:rotate(45deg);background:linear-gradient(180deg,var(--yellow-hi),var(--yellow));
+      color:#1a1405;font-family:'Space Grotesk';font-weight:800;font-size:10px;letter-spacing:1.2px;padding:3px 34px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+    .save{display:inline-block;margin-top:6px;font-family:'Space Grotesk';font-weight:700;font-size:11px;letter-spacing:.6px;
+      color:#1a1405;background:linear-gradient(180deg,var(--yellow-hi),var(--yellow));border-radius:20px;padding:2px 10px}
+    .plan .go .btn{width:100%}
+    @keyframes planIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+    @keyframes planRing{0%{background-position:0% 50%}100%{background-position:220% 50%}}
+    @media(max-width:520px){.plans{grid-template-columns:1fr}}
+  </style>
+
+  <div class="plans">
+    <form method="post" action="/billing/checkout" class="plan">
       {% csrf_token %}<input type="hidden" name="plan" value="monthly">
-      <div class="section-label">Monthly</div>
-      <div style="font-size:30px;font-weight:800">$5<span class="muted" style="font-size:14px">/mo</span></div>
-      <button class="btn" style="width:100%;margin-top:12px" type="submit">Subscribe</button>
+      <div class="pname">Monthly</div>
+      <div class="price">$5<span>/mo</span></div>
+      <div class="sub">billed monthly · cancel anytime</div>
+      <div class="go"><button class="btn" type="submit">Subscribe</button></div>
     </form>
-    <form method="post" action="/billing/checkout" class="card" style="text-align:center;border-color:var(--acc)">
+    <form method="post" action="/billing/checkout" class="plan best">
       {% csrf_token %}<input type="hidden" name="plan" value="annual">
-      <div class="section-label">Annual · <span style="color:var(--acc)">save ~17%</span></div>
-      <div style="font-size:30px;font-weight:800">$50<span class="muted" style="font-size:14px">/yr</span></div>
-      <button class="btn" style="width:100%;margin-top:12px" type="submit">Subscribe</button>
+      <div class="ribbon">BEST VALUE</div>
+      <div class="pname">Annual</div>
+      <div class="price">$50<span>/yr</span></div>
+      <div class="sub">just $4.17/mo · <span class="save">save ~17%</span></div>
+      <div class="go"><button class="btn" type="submit">Subscribe</button></div>
     </form>
   </div>
   <p class="muted" style="font-size:12px;margin-top:14px">Secure checkout by Stripe. Cancel anytime. No ads, and we

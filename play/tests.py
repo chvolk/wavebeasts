@@ -144,6 +144,7 @@ class ManagedPaymentsTests(TestCase):
     @patch("play.billing.stripe")
     def test_checkout_enables_managed_payments_and_preview_version(self, ms):
         ms.checkout.Session.create.return_value = type("S", (), {"url": "https://pay"})()
+        ms.Customer.retrieve.return_value = type("C", (), {"deleted": False})()  # existing customer, current mode
         # tax-code lookup path
         prod = type("P", (), {"id": "prod_1", "tax_code": None})()
         ms.Price.retrieve.return_value = type("PR", (), {"product": prod})()
@@ -157,11 +158,27 @@ class ManagedPaymentsTests(TestCase):
     @patch("play.billing.stripe")
     def test_checkout_standard_flow_when_managed_off(self, ms):
         ms.checkout.Session.create.return_value = type("S", (), {"url": "https://pay"})()
+        ms.Customer.retrieve.return_value = type("C", (), {"deleted": False})()  # existing customer, current mode
         self.billing.checkout_url(self.wallet, self.user, "monthly", "https://ok", "https://no")
         kwargs = ms.checkout.Session.create.call_args.kwargs
         self.assertNotIn("managed_payments", kwargs)
         self.assertNotIn("stripe_version", kwargs)  # no preview pin on the stable flow
         ms.Product.modify.assert_not_called()
+
+    @override_settings(STRIPE_MANAGED_PAYMENTS=False)
+    @patch("play.billing.stripe")
+    def test_stale_customer_from_other_mode_is_recreated(self, ms):
+        class _IRE(Exception):
+            pass
+        ms.error.InvalidRequestError = _IRE
+        ms.Customer.retrieve.side_effect = _IRE("No such customer")  # test id under a live key
+        ms.Customer.create.return_value = type("C", (), {"id": "cus_new"})()
+        ms.checkout.Session.create.return_value = type("S", (), {"url": "https://pay"})()
+        self.assertEqual(self.wallet.stripe_customer_id, "cus_1")
+        self.billing.checkout_url(self.wallet, self.user, "monthly", "https://ok", "https://no")
+        self.wallet.refresh_from_db()
+        self.assertEqual(self.wallet.stripe_customer_id, "cus_new")  # replaced the dead id
+        ms.Customer.create.assert_called_once()
 
 
 @override_settings(ALLOWED_HOSTS=["testserver"])

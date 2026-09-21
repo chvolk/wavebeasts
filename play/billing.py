@@ -46,7 +46,14 @@ def ensure_product_tax_code(price=None):
 def ensure_customer(wallet, user):
     _init()
     if wallet.stripe_customer_id:
-        return wallet.stripe_customer_id
+        # A stored id from a different mode (test↔live) or a deleted customer won't exist under the
+        # current key. Verify it; recreate if it's gone rather than failing checkout.
+        try:
+            c = stripe.Customer.retrieve(wallet.stripe_customer_id)
+            if not getattr(c, "deleted", False):
+                return wallet.stripe_customer_id
+        except stripe.error.InvalidRequestError:
+            pass  # No such customer → fall through and make a fresh one
     c = stripe.Customer.create(metadata={"user_id": str(user.id), "username": user.username})
     wallet.stripe_customer_id = c.id
     wallet.save(update_fields=["stripe_customer_id"])

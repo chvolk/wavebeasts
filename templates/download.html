@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Download · WaveBeasts{% endblock %}
 {% block content %}
-{% with base="https://github.com/chvolk/wavebeast/releases/latest/download" %}
+{% with base="https://github.com/chvolk/wavebeast-dl/releases/latest/download" %}
 <style>
   .dlgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
   .dltile{background:linear-gradient(180deg,var(--panel),#0f0f12);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;box-shadow:var(--shadow)}
@@ -68,7 +68,7 @@ curl -L {{ base }}/wavebeast-macos-amd64 -o wavebeast && chmod +x wavebeast && .
   Open <code>http://localhost:8777</code> and play. Scans yield about once a minute. To grow your online
   beastiary, create a node in <a href="/me/">your profile</a>, paste its token into the app's WORLD tab, and
   submit snapshots or upload your local catches. Source &amp; releases on
-  <a href="https://github.com/chvolk/wavebeast" target="_blank" rel="noopener">GitHub</a>.
+  <a href="https://github.com/chvolk/wavebeast-dl" target="_blank" rel="noopener">GitHub</a>.
 </div>
 
 <div class="section-label">Build on it</div>
@@ -76,7 +76,7 @@ curl -L {{ base }}/wavebeast-macos-amd64 -o wavebeast && chmod +x wavebeast && .
   WaveBeast has no client lock-in: anything that can produce signals can feed it. Wire your own tools in
   over the HTTP API or CLI on desktop/Linux, or share text / <code>wavebeast://</code> deep links into the
   Android app. See the
-  <a href="https://github.com/chvolk/wavebeast/blob/main/INTEGRATION.md" target="_blank" rel="noopener">integration guide</a>.
+  <a href="https://github.com/chvolk/wavebeast-dl/blob/main/INTEGRATION.md" target="_blank" rel="noopener">integration guide</a>.
 </div>
 {% endwith %}
 {% endblock %}

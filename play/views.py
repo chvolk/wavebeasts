@@ -63,7 +63,7 @@ def app_apk(request):
     A same-origin download with a clean Content-Length avoids the cross-origin signed-URL redirect chain
     that stalls some Android browsers (download 'starts but never finishes')."""
     from django.http import HttpResponse, StreamingHttpResponse
-    url = "https://github.com/chvolk/wavebeast/releases/latest/download/wavebeast.apk"
+    url = "https://github.com/chvolk/wavebeast-dl/releases/latest/download/wavebeast.apk"
     try:
         up = requests.get(url, stream=True, timeout=30)
         up.raise_for_status()

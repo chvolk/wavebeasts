@@ -130,6 +130,40 @@ class AuthBillingTests(TestCase):
         self.assertIn(self.client.get("/billing/").status_code, (301, 302))
 
 
+@override_settings(STRIPE_SECRET_KEY="sk_test_x", STRIPE_PRICE_MONTHLY="price_m",
+                   STRIPE_PRICE_ANNUAL="price_a", STRIPE_PREVIEW_VERSION="2026-02-25.preview",
+                   STRIPE_TAX_CODE="txcd_10103100")
+class ManagedPaymentsTests(TestCase):
+    def setUp(self):
+        from . import billing
+        self.billing = billing
+        self.user = User.objects.create_user("payer", password="x")
+        self.wallet = Wallet.objects.get_or_create(user=self.user, defaults={"stripe_customer_id": "cus_1"})[0]
+
+    @override_settings(STRIPE_MANAGED_PAYMENTS=True)
+    @patch("play.billing.stripe")
+    def test_checkout_enables_managed_payments_and_preview_version(self, ms):
+        ms.checkout.Session.create.return_value = type("S", (), {"url": "https://pay"})()
+        # tax-code lookup path
+        prod = type("P", (), {"id": "prod_1", "tax_code": None})()
+        ms.Price.retrieve.return_value = type("PR", (), {"product": prod})()
+        self.billing.checkout_url(self.wallet, self.user, "monthly", "https://ok", "https://no")
+        kwargs = ms.checkout.Session.create.call_args.kwargs
+        self.assertEqual(kwargs.get("managed_payments"), {"enabled": True})
+        self.assertEqual(kwargs.get("stripe_version"), "2026-02-25.preview")
+        ms.Product.modify.assert_called_once_with("prod_1", tax_code="txcd_10103100")
+
+    @override_settings(STRIPE_MANAGED_PAYMENTS=False)
+    @patch("play.billing.stripe")
+    def test_checkout_standard_flow_when_managed_off(self, ms):
+        ms.checkout.Session.create.return_value = type("S", (), {"url": "https://pay"})()
+        self.billing.checkout_url(self.wallet, self.user, "monthly", "https://ok", "https://no")
+        kwargs = ms.checkout.Session.create.call_args.kwargs
+        self.assertNotIn("managed_payments", kwargs)
+        self.assertNotIn("stripe_version", kwargs)  # no preview pin on the stable flow
+        ms.Product.modify.assert_not_called()
+
+
 @override_settings(ALLOWED_HOSTS=["testserver"])
 class TieringTests(TestCase):
     def setUp(self):

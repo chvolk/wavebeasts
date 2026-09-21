@@ -176,6 +176,12 @@ STRIPE_PRICE_MONTHLY = os.environ.get("STRIPE_PRICE_MONTHLY", "")
 STRIPE_PRICE_ANNUAL = os.environ.get("STRIPE_PRICE_ANNUAL", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 SITE_URL = os.environ.get("SITE_URL", "https://wavebeasts.com")
+# Managed Payments: Stripe is merchant of record + auto-remits tax. Rides a preview API version and
+# adds managed_payments[enabled]=true at Checkout. OFF by default so it never flips live billing on
+# deploy — set STRIPE_MANAGED_PAYMENTS=1 (with the tax_code set on the product) to turn it on.
+STRIPE_MANAGED_PAYMENTS = os.environ.get("STRIPE_MANAGED_PAYMENTS", "0") in ("1", "true", "True")
+STRIPE_PREVIEW_VERSION = os.environ.get("STRIPE_PREVIEW_VERSION", "2026-02-25.preview")
+STRIPE_TAX_CODE = os.environ.get("STRIPE_TAX_CODE", "txcd_10103100")  # SaaS (business use)
 
 # Auth is Clerk when its keys are present; otherwise fall back to Django's built-in login.
 LOGIN_URL = "/sign-in/" if CLERK_PUBLISHABLE_KEY else "/login/"

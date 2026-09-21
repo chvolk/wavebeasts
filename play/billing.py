@@ -1,5 +1,9 @@
 """Stripe subscription helpers. $5/mo or annual; the webhook drives Wallet.subscribed, which gates the
-paid features. Test-mode keys today; the same code works in live mode when the prod keys are set."""
+paid features. Test-mode keys today; the same code works in live mode when the prod keys are set.
+
+When settings.STRIPE_MANAGED_PAYMENTS is on, Checkout runs in Managed Payments mode (Stripe is the
+merchant of record and calculates/remits tax) — that adds managed_payments[enabled]=true and requires the
+STRIPE_PREVIEW_VERSION API version + an eligible tax_code on the product."""
 import stripe
 from django.conf import settings
 
@@ -10,8 +14,33 @@ def _init():
     stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
+def _managed():
+    return bool(settings.STRIPE_MANAGED_PAYMENTS)
+
+
+def _req_opts():
+    """Per-request options: pin the preview API version for Managed Payments calls only."""
+    return {"stripe_version": settings.STRIPE_PREVIEW_VERSION} if _managed() else {}
+
+
 def price_id(plan):
     return settings.STRIPE_PRICE_ANNUAL if plan == "annual" else settings.STRIPE_PRICE_MONTHLY
+
+
+def ensure_product_tax_code(price=None):
+    """Managed Payments requires an eligible tax_code on the product. Idempotently set it on the product
+    behind our monthly price (both prices share the same product). Returns the product id, or None."""
+    _init()
+    pid = price or settings.STRIPE_PRICE_MONTHLY
+    if not pid:
+        return None
+    pr = stripe.Price.retrieve(pid, expand=["product"])
+    prod = pr.product
+    prod_id = prod if isinstance(prod, str) else prod.id
+    current = None if isinstance(prod, str) else getattr(prod, "tax_code", None)
+    if current != settings.STRIPE_TAX_CODE:
+        stripe.Product.modify(prod_id, tax_code=settings.STRIPE_TAX_CODE)
+    return prod_id
 
 
 def ensure_customer(wallet, user):
@@ -27,7 +56,7 @@ def ensure_customer(wallet, user):
 def checkout_url(wallet, user, plan, success_url, cancel_url):
     _init()
     cust = ensure_customer(wallet, user)
-    sess = stripe.checkout.Session.create(
+    params = dict(
         mode="subscription",
         customer=cust,
         line_items=[{"price": price_id(plan), "quantity": 1}],
@@ -36,6 +65,11 @@ def checkout_url(wallet, user, plan, success_url, cancel_url):
         allow_promotion_codes=True,
         subscription_data={"metadata": {"user_id": str(user.id)}},
     )
+    if _managed():
+        # Stripe becomes merchant of record and handles tax; product must carry an eligible tax_code.
+        ensure_product_tax_code()
+        params["managed_payments"] = {"enabled": True}
+    sess = stripe.checkout.Session.create(**params, **_req_opts())
     return sess.url
 
 

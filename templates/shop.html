@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Shop · WaveBeasts{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:0 0 6px">
+  <h1 style="margin:0">Shop</h1>
+  <span class="chip silver">Shards <b>{{ wallet.shards }}</b></span>
+  <span class="chip acc">Cores <b>{{ wallet.cores }}</b></span>
+</div>
+<p class="muted" style="margin:0 0 16px">Spend your account currency on drives, food and tools. It is the same
+wallet the app and your nodes use, so purchases show up everywhere instantly.</p>
+
+{% if shop_msg %}<div class="card" style="border-color:var(--yellow);color:var(--yellow-hi);padding:10px 14px;margin:0 0 12px">{{ shop_msg }}</div>{% endif %}
+{% if shop_err %}<div class="card" style="border-color:var(--red);color:var(--red);padding:10px 14px;margin:0 0 12px">{{ shop_err }}</div>{% endif %}
+
+<style>
+  .shopgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+  .shopitem{display:flex;flex-direction:column;background:linear-gradient(180deg,var(--panel),#0e0e11);
+    border:1px solid var(--line);border-radius:14px;padding:14px;transition:transform .14s,border-color .14s}
+  .shopitem:hover{transform:translateY(-3px);border-color:var(--line2)}
+  .shopitem .nm{font-family:'Space Grotesk';font-weight:600;font-size:16px}
+  .shopitem .ds{color:var(--mut);font-size:12.5px;margin:2px 0 10px;flex:1}
+  .shopitem .cost{font-family:'Space Grotesk';font-weight:700}
+  .shopitem .cost.shards{color:var(--silver-hi)} .shopitem .cost.cores{color:var(--yellow-hi)}
+  .shopitem .own{font-size:11px;color:var(--dim)}
+  .shopitem form{display:flex;gap:8px;align-items:center;margin-top:10px}
+  .shopitem input[type=number]{width:64px;padding:7px 8px;font-size:13px}
+  .shopitem .btn{flex:1}
+</style>
+
+{% for category, items in grouped %}
+<div class="section-label">{{ category }}s</div>
+<div class="shopgrid">
+  {% for it in items %}
+  <div class="shopitem">
+    <div class="nm">{{ it.name }}</div>
+    <div class="ds">{{ it.desc }}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span class="cost {{ it.cost_kind }}">{{ it.cost_amt }} {{ it.cost_kind }}</span>
+      {% if it.owned %}<span class="own">owned: {{ it.owned }}</span>{% endif %}
+    </div>
+    <form method="post" action="/shop/buy">{% csrf_token %}
+      <input type="hidden" name="item_id" value="{{ it.id }}">
+      <input type="number" name="qty" value="1" min="1" max="99" aria-label="quantity">
+      <button class="btn sm" type="submit">Buy</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% empty %}
+<div class="card muted">The shop is unavailable right now. Try again shortly.</div>
+{% endfor %}
+{% endblock %}

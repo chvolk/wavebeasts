@@ -49,6 +49,8 @@ urlpatterns = [
 
     path("api/beasts", views.api_beasts, name="api_beasts"),
     path("api/catch", views.api_catch, name="api_catch"),
+    path("shop/", views.shop, name="shop"),
+    path("shop/buy", views.shop_buy, name="shop_buy"),
     path("api/shop", views.api_shop, name="api_shop"),
     path("api/buy", views.api_buy, name="api_buy"),
     path("api/sync", views.api_sync, name="api_sync"),

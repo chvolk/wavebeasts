@@ -279,6 +279,23 @@ class BuyTests(TestCase):
         mshop.return_value = self.CATALOG
         self.assertEqual(self._buy("cheat_item").status_code, 404)
 
+    @patch("play.resolver.shop")
+    def test_web_shop_page_and_purchase(self, mshop):
+        mshop.return_value = {"items": [{"id": "pulse_drive", "name": "Pulse Drive", "category": "drive",
+                                         "cost_kind": "shards", "cost_amt": 30, "desc": "x1.5"}]}
+        self.client.force_login(self.user)
+        page = self.client.get("/shop/")
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Pulse Drive")
+        r = self.client.post("/shop/buy", {"item_id": "pulse_drive", "qty": 1})
+        self.assertEqual(r.status_code, 302)  # redirect back to shop
+        self.wallet.refresh_from_db()
+        self.assertEqual(self.wallet.shards, 20)  # spent 30, synced to the account wallet
+        self.assertEqual(InventoryItem.objects.get(user=self.user, item_id="pulse_drive").qty, 1)
+
+    def test_web_shop_requires_login(self):
+        self.assertIn(self.client.get("/shop/").status_code, (301, 302))
+
 
 @override_settings(ALLOWED_HOSTS=["testserver"])
 class SyncTests(TestCase):

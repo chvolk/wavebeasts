@@ -834,30 +834,76 @@ def api_buy(request):
         qty = max(1, min(99, int(data.get("qty", 1))))
     except (TypeError, ValueError):
         qty = 1
+    status, payload = _buy_item(node.user, item_id, qty)
+    return JsonResponse(payload, status=status)
+
+
+def _buy_item(user, item_id, qty):
+    """Server-authoritative purchase from account currency. Price comes from the engine catalog and the
+    balance is checked here, so nothing about the cost is client-set. Shared by the node API and the web
+    shop. Buying (drives to catch, food to train) is part of the free base loop. Returns (status, payload)."""
     try:
         catalog = resolver.shop().get("items", [])
     except Exception as e:
-        return JsonResponse({"error": f"resolver unavailable: {e}"}, status=502)
+        return 502, {"error": f"resolver unavailable: {e}"}
     item = next((i for i in catalog if i.get("id") == item_id), None)
     if not item:
-        return JsonResponse({"error": "unknown item"}, status=404)
+        return 404, {"error": "unknown item"}
     kind = item.get("cost_kind", "shards")
     cost = int(item.get("cost_amt", 0)) * qty
     with transaction.atomic():
-        w = Wallet.objects.select_for_update().get_or_create(user=node.user)[0]
+        w = Wallet.objects.select_for_update().get_or_create(user=user)[0]
         balance = w.cores if kind == "cores" else w.shards
         if balance < cost:
-            return JsonResponse({"error": f"not enough {kind}", "need": cost, "have": balance}, status=409)
+            return 409, {"error": f"not enough {kind}", "need": cost, "have": balance}
         if kind == "cores":
             w.cores -= cost
         else:
             w.shards -= cost
         w.save()
-        inv, _ = InventoryItem.objects.get_or_create(user=node.user, item_id=item_id)
+        inv, _ = InventoryItem.objects.get_or_create(user=user, item_id=item_id)
         inv.qty += qty
         inv.save()
-    return JsonResponse({"ok": True, "item_id": item_id, "qty": inv.qty, "spent": cost, "cost_kind": kind,
-                         "shards": w.shards, "cores": w.cores})
+    return 200, {"ok": True, "item_id": item_id, "qty": inv.qty, "spent": cost, "cost_kind": kind,
+                 "name": item.get("name", item_id), "shards": w.shards, "cores": w.cores}
+
+
+@login_required
+def shop(request):
+    """Web shop: spend your account shards/cores on drives, food and tools. Same wallet the app/nodes use,
+    so purchases show up everywhere instantly. Free base loop - no subscription needed."""
+    try:
+        catalog = resolver.shop().get("items", [])
+    except Exception:
+        catalog = []
+    w = _wallet(request.user)
+    inv = {i.item_id: i.qty for i in request.user.items.filter(qty__gt=0)}
+    cats = {}
+    for it in catalog:
+        it["owned"] = inv.get(it.get("id"), 0)
+        cats.setdefault(it.get("category", "other"), []).append(it)
+    order = ["drive", "food", "tool", "other"]
+    grouped = [(c, cats[c]) for c in order if c in cats]
+    return render(request, "shop.html", {
+        "nav": "shop", "wallet": w, "grouped": grouped, "inv": inv,
+        "shop_msg": request.session.pop("shop_msg", ""), "shop_err": request.session.pop("shop_err", ""),
+    })
+
+
+@login_required
+def shop_buy(request):
+    if request.method == "POST":
+        item_id = str(request.POST.get("item_id") or "")
+        try:
+            qty = max(1, min(99, int(request.POST.get("qty", 1))))
+        except (TypeError, ValueError):
+            qty = 1
+        status, payload = _buy_item(request.user, item_id, qty)
+        if status == 200:
+            request.session["shop_msg"] = f"Bought {qty}x {payload.get('name', item_id)} for {payload['spent']} {payload['cost_kind']}."
+        else:
+            request.session["shop_err"] = payload.get("error", "Purchase failed.")
+    return redirect("shop")
 
 
 @csrf_exempt

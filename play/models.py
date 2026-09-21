@@ -17,7 +17,10 @@ class Wallet(models.Model):
     team_ids = models.JSONField(default=list)
     # Free tier by default. Paid unlocks the web-service layer: multi-node, trading, battles, async
     # ladder, and the Buddy system. (Existing accounts were grandfathered to paid — see migration 0009.)
-    subscribed = models.BooleanField(default=False)
+    subscribed = models.BooleanField(default=False)  # driven by the Stripe subscription status below
+    stripe_customer_id = models.CharField(max_length=64, blank=True, default="")
+    subscription_status = models.CharField(max_length=32, blank=True, default="")  # active/trialing/past_due/canceled/…
+    onboarded = models.BooleanField(default=False)
     last_sync = models.DateTimeField(null=True, blank=True)  # once-per-day standardize-old-beasts run
 
     def __str__(self):

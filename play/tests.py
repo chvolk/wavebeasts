@@ -98,6 +98,33 @@ class BuddyApiTests(TestCase):
 
 
 @override_settings(ALLOWED_HOSTS=["testserver"])
+class AuthBillingTests(TestCase):
+    def test_auth_pages_render(self):
+        self.assertEqual(self.client.get("/sign-in/").status_code, 200)
+        self.assertEqual(self.client.get("/sign-up/").status_code, 200)
+
+    def test_django_login_fallback_still_exists(self):
+        self.assertEqual(self.client.get("/login/").status_code, 200)  # fallback when Clerk isn't configured
+
+    @patch("play.clerkauth.verify_clerk_token")
+    def test_auth_clerk_creates_user_and_session(self, mv):
+        mv.return_value = {"sub": "user_abc"}
+        r = self.client.post("/auth/clerk", data=json.dumps({"token": "x"}), content_type="application/json")
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(User.objects.filter(username="user_abc").exists())
+        self.assertEqual(r.json()["redirect"], "/onboarding/")  # new user → onboarding first
+
+    @patch("play.clerkauth.verify_clerk_token")
+    def test_auth_clerk_rejects_bad_token(self, mv):
+        mv.return_value = None
+        r = self.client.post("/auth/clerk", data=json.dumps({"token": "x"}), content_type="application/json")
+        self.assertEqual(r.status_code, 401)
+
+    def test_billing_requires_login(self):
+        self.assertIn(self.client.get("/billing/").status_code, (301, 302))
+
+
+@override_settings(ALLOWED_HOSTS=["testserver"])
 class TieringTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("free", password="x")

@@ -150,9 +150,32 @@ _db = os.environ.get("DATABASE_URL")
 if _db:
     DATABASES["default"] = dj_database_url.parse(_db, conn_max_age=600, ssl_require=True)
 
-LOGIN_URL = "/login/"
+LOGIN_URL = "/sign-in/"
 LOGIN_REDIRECT_URL = "/me/"
 LOGOUT_REDIRECT_URL = "/"
 
 # The WaveBeast Go engine, run headless as the stateless generation/battle resolver.
 WAVEBEAST_RESOLVER = os.environ.get("WAVEBEAST_RESOLVER", "http://bishop.home:8777")
+
+# ---- Clerk (auth) + Stripe (billing) -------------------------------------------------------------
+# Load a local .env in development so these are set without exporting (Railway injects them in prod).
+_envfile = BASE_DIR / ".env"
+if _envfile.exists():
+    for _line in _envfile.read_text().splitlines():
+        _line = _line.strip()
+        if not _line or _line.startswith("#") or "=" not in _line:
+            continue
+        _k, _v = _line.split("=", 1)
+        os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
+
+CLERK_PUBLISHABLE_KEY = os.environ.get("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY") or os.environ.get("CLERK_PUBLIC_KEY", "")
+CLERK_SECRET_KEY = os.environ.get("CLERK_SECRET_KEY", "")
+STRIPE_PUB_KEY = os.environ.get("STRIPE_PUB_KEY", "")
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_PRICE_MONTHLY = os.environ.get("STRIPE_PRICE_MONTHLY", "")
+STRIPE_PRICE_ANNUAL = os.environ.get("STRIPE_PRICE_ANNUAL", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+SITE_URL = os.environ.get("SITE_URL", "https://wavebeasts.com")
+
+# Auth is Clerk when its keys are present; otherwise fall back to Django's built-in login.
+LOGIN_URL = "/sign-in/" if CLERK_PUBLISHABLE_KEY else "/login/"

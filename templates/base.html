@@ -172,13 +172,15 @@
   <div class="right">
     <span class="chip silver">Shards <b>{{ wb_wallet.shards }}</b></span>
     <span class="chip acc">Cores <b>{{ wb_wallet.cores }}</b></span>
-    <form method="post" action="/logout/" style="display:inline;margin:0">{% csrf_token %}<button class="btn sec sm" type="submit">Sign out</button></form>
+    <a class="btn {% if wb_wallet.subscribed %}sec {% endif %}sm" href="/billing/">{% if wb_wallet.subscribed %}Premium{% else %}Upgrade{% endif %}</a>
+    {% if clerk_pk %}<div id="clerk-userbtn" style="display:flex;align-items:center"></div>
+    {% else %}<form method="post" action="/logout/" style="display:inline;margin:0">{% csrf_token %}<button class="btn sec sm" type="submit">Sign out</button></form>{% endif %}
   </div>
   {% else %}
   <div class="right">
     <a class="btn sec sm" href="/download/">Download</a>
-    <a class="btn sec sm" href="/login/">Sign in</a>
-    <a class="btn sm" href="/signup/">Create account</a>
+    <a class="btn sec sm" href="{% if clerk_pk %}/sign-in/{% else %}/login/{% endif %}">Sign in</a>
+    <a class="btn sm" href="{% if clerk_pk %}/sign-up/{% else %}/signup/{% endif %}">Create account</a>
   </div>
   {% endif %}
 </nav>
@@ -192,6 +194,20 @@
   <span style="margin-left:auto">No ads · no tracking · we never sell your data</span>
 </footer>
 {% endblock %}
+
+{% if clerk_pk %}
+<script async crossorigin="anonymous" data-clerk-publishable-key="{{ clerk_pk }}"
+  src="https://{{ clerk_host }}/npm/@clerk/clerk-js@5/dist/clerk.browser.js" type="text/javascript"></script>
+<script>
+  window.addEventListener('load', async function(){
+    if(!window.Clerk) return;
+    try{ await Clerk.load(); }catch(e){ return; }
+    var btn=document.getElementById('clerk-userbtn');
+    if(btn && Clerk.user){ Clerk.mountUserButton(btn, {afterSignOutUrl:'/logout/'}); }
+    if(typeof window.__wbClerkReady==='function'){ window.__wbClerkReady(Clerk); }
+  });
+</script>
+{% endif %}
 
 <div id="wb-cookie" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:80;background:var(--panel);border-top:1px solid var(--line);padding:14px 18px;box-shadow:0 -8px 28px rgba(0,0,0,.45)">
   <div style="max-width:960px;margin:0 auto;display:flex;gap:14px;flex-wrap:wrap;align-items:center">

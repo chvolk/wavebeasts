@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Premium · WaveBeasts{% endblock %}
+{% block content %}
+<div style="max-width:680px;margin:8px auto">
+  <h1 class="wordmark">WaveBeasts Premium</h1>
+  {% if msg %}<div class="card" style="border-color:var(--red);color:var(--red)">{{ msg }}</div>{% endif %}
+
+  {% if active %}
+  <div class="card" style="border-color:var(--acc)">
+    <b style="color:var(--acc)">You're Premium ✓</b>
+    <p class="muted" style="margin:6px 0 10px">Status: {{ wallet.subscription_status|default:"active" }}. Thanks for
+    supporting WaveBeasts!</p>
+    <a class="btn sec sm" href="/billing/portal">Manage billing</a>
+  </div>
+  {% else %}
+  <p class="muted" style="margin:6px 0 16px">Local play and one sensor node are free forever. Premium unlocks the
+  online layer: <b>trading, battles, the async ladder, the Buddy companion,</b> uploads, node boosts, and up to
+  <b>12 nodes</b>.</p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <form method="post" action="/billing/checkout" class="card" style="text-align:center">
+      {% csrf_token %}<input type="hidden" name="plan" value="monthly">
+      <div class="section-label">Monthly</div>
+      <div style="font-size:30px;font-weight:800">$5<span class="muted" style="font-size:14px">/mo</span></div>
+      <button class="btn" style="width:100%;margin-top:12px" type="submit">Subscribe</button>
+    </form>
+    <form method="post" action="/billing/checkout" class="card" style="text-align:center;border-color:var(--acc)">
+      {% csrf_token %}<input type="hidden" name="plan" value="annual">
+      <div class="section-label">Annual · <span style="color:var(--acc)">save ~17%</span></div>
+      <div style="font-size:30px;font-weight:800">$50<span class="muted" style="font-size:14px">/yr</span></div>
+      <button class="btn" style="width:100%;margin-top:12px" type="submit">Subscribe</button>
+    </form>
+  </div>
+  <p class="muted" style="font-size:12px;margin-top:14px">Secure checkout by Stripe. Cancel anytime. No ads, and we
+  never sell your data — see our <a href="/privacy/" style="color:var(--red)">Privacy Policy</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

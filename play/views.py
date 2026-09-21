@@ -5,16 +5,18 @@ import secrets
 
 import requests
 
-from django.contrib.auth import login
+from django.conf import settings
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
-from . import buddy as buddymod, ladder, resolver
+from . import billing as billing_mod, buddy as buddymod, clerkauth, ladder, resolver
 from .models import (AsyncBattle, Buddy, BattleRecord, InventoryItem, LadderTeam, Node,
                      OwnedBeast, Snapshot, TradeListing, TradeOffer, Wallet)
 
@@ -53,6 +55,100 @@ def privacy(request):
 
 def terms(request):
     return render(request, "terms.html", {"nav": ""})
+
+
+# ---- Clerk auth ----------------------------------------------------------------------------------
+
+def _clerk_ctx():
+    return {"clerk_pk": settings.CLERK_PUBLISHABLE_KEY, "clerk_host": clerkauth.frontend_api_host()}
+
+
+def sign_in(request):
+    return render(request, "auth.html", {**_clerk_ctx(), "mode": "sign-in", "nav": ""})
+
+
+def sign_up(request):
+    return render(request, "auth.html", {**_clerk_ctx(), "mode": "sign-up", "nav": ""})
+
+
+@csrf_exempt
+def auth_clerk(request):
+    """Exchange a verified Clerk session token for a Django session (called by the sign-in page)."""
+    if request.method != "POST":
+        return JsonResponse({"error": "POST only"}, status=405)
+    try:
+        token = json.loads(request.body.decode("utf-8")).get("token", "")
+    except Exception:
+        return JsonResponse({"error": "bad json"}, status=400)
+    claims = clerkauth.verify_clerk_token(token)
+    if not claims:
+        return JsonResponse({"error": "invalid session"}, status=401)
+    user, created = User.objects.get_or_create(username=claims["sub"])
+    if created:
+        user.set_unusable_password()
+        user.save()
+        Wallet.objects.get_or_create(user=user)
+        InventoryItem.objects.get_or_create(user=user, item_id="spark_drive", defaults={"qty": 3})
+    login(request, user)
+    return JsonResponse({"ok": True, "redirect": "/me/" if _wallet(user).onboarded else "/onboarding/"})
+
+
+def sign_out(request):
+    logout(request)
+    return redirect("/")
+
+
+@login_required
+def onboarding(request):
+    w = _wallet(request.user)
+    if request.method == "POST":
+        w.onboarded = True
+        w.save(update_fields=["onboarded"])
+        return redirect("dashboard")
+    return render(request, "onboarding.html", {"nav": "", **_clerk_ctx()})
+
+
+# ---- billing (Stripe) ----------------------------------------------------------------------------
+
+@login_required
+def billing(request):
+    w = _wallet(request.user)
+    return render(request, "billing.html", {"nav": "", "wallet": w, "active": w.subscribed,
+                                            "msg": request.session.pop("billing_msg", "")})
+
+
+@login_required
+def checkout(request):
+    plan = request.POST.get("plan", "monthly")
+    base = settings.SITE_URL
+    try:
+        url = billing_mod.checkout_url(_wallet(request.user), request.user, plan,
+                                       base + "/billing/?ok=1", base + "/billing/?cancel=1")
+    except Exception as e:
+        request.session["billing_msg"] = f"Checkout unavailable: {e}"
+        return redirect("billing")
+    return redirect(url)
+
+
+@login_required
+def billing_portal(request):
+    url = billing_mod.portal_url(_wallet(request.user), settings.SITE_URL + "/billing/")
+    return redirect(url or "billing")
+
+
+@csrf_exempt
+def stripe_webhook(request):
+    import stripe
+    secret = settings.STRIPE_WEBHOOK_SECRET
+    try:
+        if secret:
+            event = stripe.Webhook.construct_event(request.body, request.META.get("HTTP_STRIPE_SIGNATURE", ""), secret)
+        else:
+            event = json.loads(request.body.decode("utf-8"))  # dev fallback when no signing secret is set
+    except Exception:
+        return HttpResponse(status=400)
+    billing_mod.apply_event(event)
+    return HttpResponse(status=200)
 
 
 def app_version(request):

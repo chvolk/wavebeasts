@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == 'sign-up' %}Create account{% else %}Sign in{% endif %} · WaveBeasts{% endblock %}
+{% block content %}
+<div style="max-width:460px;margin:16px auto;text-align:center">
+  <h1 class="wordmark" style="margin-bottom:14px">{% if mode == 'sign-up' %}Create your account{% else %}Sign in{% endif %}</h1>
+  {% if not clerk_pk %}
+  <div class="card muted">Sign-in isn't configured yet.</div>
+  {% else %}
+  <div id="clerk-auth" style="display:flex;justify-content:center"></div>
+  <div id="clerk-fallback" class="muted" style="font-size:13px;margin-top:12px"></div>
+  {% endif %}
+</div>
+<script>
+(function(){
+  function getCsrf(){ var m=document.cookie.match(/csrftoken=([^;]+)/); return m?m[1]:''; }
+  async function exchange(clerk){
+    try{
+      var t = await clerk.session.getToken();
+      var r = await fetch('/auth/clerk',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},body:JSON.stringify({token:t})});
+      if(r.ok){ var d=await r.json(); location.href=d.redirect||'/me/'; }
+      else { document.getElementById('clerk-fallback').textContent='Could not complete sign-in.'; }
+    }catch(e){ document.getElementById('clerk-fallback').textContent='Sign-in error.'; }
+  }
+  window.__wbClerkReady = function(clerk){
+    if(clerk.user){ return exchange(clerk); }
+    var el=document.getElementById('clerk-auth'); if(!el) return;
+    var opts={afterSignInUrl:'{{ request.path }}', afterSignUpUrl:'{{ request.path }}'};
+    {% if mode == 'sign-up' %}clerk.mountSignUp(el,opts);{% else %}clerk.mountSignIn(el,opts);{% endif %}
+    clerk.addListener(function(e){ if(e.user) exchange(clerk); });
+  };
+})();
+</script>
+{% endblock %}

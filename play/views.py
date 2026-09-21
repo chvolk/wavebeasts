@@ -57,6 +57,26 @@ def terms(request):
     return render(request, "terms.html", {"nav": ""})
 
 
+def docs(request):
+    return render(request, "docs.html", {"nav": "docs"})
+
+
+def node_client(request):
+    """Serve the stdlib-only listener-node client script (for curl/wget on any device)."""
+    import os
+    from django.conf import settings
+    from django.http import HttpResponse
+    path = os.path.join(settings.BASE_DIR, "play", "files", "wavebeast-node.py")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            body = f.read()
+    except OSError:
+        return HttpResponse("not found", status=404)
+    resp = HttpResponse(body, content_type="text/x-python; charset=utf-8")
+    resp["Cache-Control"] = "no-cache"
+    return resp
+
+
 # ---- Clerk auth ----------------------------------------------------------------------------------
 
 def _clerk_ctx():

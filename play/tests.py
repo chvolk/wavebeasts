@@ -129,6 +129,15 @@ class AuthBillingTests(TestCase):
     def test_billing_requires_login(self):
         self.assertIn(self.client.get("/billing/").status_code, (301, 302))
 
+    def test_docs_and_node_client_public(self):
+        d = self.client.get("/docs/")
+        self.assertEqual(d.status_code, 200)
+        self.assertContains(d, "Type chart")
+        n = self.client.get("/download/wavebeast-node.py")
+        self.assertEqual(n.status_code, 200)
+        self.assertIn("python", n["Content-Type"])
+        self.assertContains(n, "X-WB-Node-Token")
+
 
 @override_settings(STRIPE_SECRET_KEY="sk_test_x", STRIPE_PRICE_MONTHLY="price_m",
                    STRIPE_PRICE_ANNUAL="price_a", STRIPE_PREVIEW_VERSION="2026-02-25.preview",

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 64" width="192" height="128" shape-rendering="crispEdges">
+  <title>Pixel supply cart and hooded shopkeeper</title>
+  <style>
+    .keeper{animation:breathe 3.6s steps(1,end) infinite}
+    .eyes{animation:blink 6.4s steps(1,end) infinite}
+    .lamp{animation:glimmer 4.8s steps(1,end) infinite}
+    @keyframes breathe{0%,55%,100%{transform:translateY(0)}56%,85%{transform:translateY(1px)}}
+    @keyframes blink{0%,91%,97%,100%{opacity:1}92%,96%{opacity:0}}
+    @keyframes glimmer{0%,72%,100%{fill:#c7a96b}73%,78%{fill:#82724f}}
+    @media(prefers-reduced-motion:reduce){.keeper,.eyes,.lamp{animation:none}}
+  </style>
+  <!-- Deliberately drawn on a 96 x 64 pixel grid, with a small flat palette. -->
+  <path fill="#182027" d="M6 60h84v2H6zM2 62h10v1H2zM84 58h8v1h-8z"/>
+  <!-- Uprights and the small striped canopy. -->
+  <path fill="#303c43" d="M17 15h3v34h-3zM76 15h3v34h-3z"/>
+  <path fill="#55616a" d="M17 15h1v29h-1zM76 15h1v29h-1z"/>
+  <path fill="#11191f" d="M20 3h56v3h4v4h4v4h3v8H9v-8h3v-4h4V6h4z"/>
+  <path fill="#a83c37" d="M21 5h54v3h4v4h4v4H13v-4h4V8h4z"/>
+  <path fill="#3d3336" d="M29 5h9v3h-2v4h-1v4H23v-4h2V8h4zM54 5h9v3h3v4h2v4H56v-4h-1V8h-1z"/>
+  <path fill="#d45a4b" d="M21 5h8v2h-8zM38 5h16v2H38zM63 5h12v2H63z"/>
+  <path fill="#773331" d="M13 16h10v5H13zM35 16h21v5H35zM68 16h15v5H68z"/>
+  <path fill="#272a30" d="M23 16h12v4H23zM56 16h12v4H56z"/>
+  <!-- A two-frame idle hood. The counter hides the bottom edge. -->
+  <g class="keeper">
+    <path fill="#151d24" d="M47 23h6v3h4v4h3v5h3v10H36V35h3v-5h3v-4h5z"/>
+    <path fill="#64645d" d="M47 23h5v3h4v4h3v5h3v7h-4v-8h-3v-5h-5v-3h-3v3h-4v5h-3v8h-4v-7h3v-5h3v-4h5z"/>
+    <path fill="#3c4446" d="M43 29h4v-3h3v3h5v5h3v8h-5v-4H43v4h-3v-8h3z"/>
+    <path fill="#080d12" d="M47 29h5v3h3v4h2v7H41v-7h2v-4h4z"/>
+    <g class="eyes" fill="#e55349"><path d="M44 35h3v2h-3zM51 35h3v2h-3z"/></g>
+  </g>
+  <!-- A lantern, two bottles and a drive on the counter. -->
+  <path fill="#38434a" d="M23 22h1v3h3v9h-7v-9h3z"/>
+  <path class="lamp" fill="#c7a96b" d="M22 27h3v5h-3z"/>
+  <path fill="#65747c" d="M28 37h3v3h2v4h-7v-4h2z"/>
+  <path fill="#a83c37" d="M27 41h5v3h-5z"/>
+  <path fill="#7d907e" d="M66 35h3v3h2v6h-7v-6h2z"/>
+  <path fill="#b1bbaa" d="M66 39h1v3h-1z"/>
+  <path fill="#69757c" d="M73 40h7v4h-7z"/><path fill="#b3443c" d="M75 40h3v2h-3z"/>
+  <!-- Cart counter, plank front, hand grips and square pixel wheels. -->
+  <path fill="#11191f" d="M11 44h75v5h-5v10H17V49h-6z"/>
+  <path fill="#85908f" d="M12 44h73v2H12z"/>
+  <path fill="#39464b" d="M18 48h62v9H18z"/>
+  <path fill="#536069" d="M19 49h60v1H19zM19 53h60v1H19z"/>
+  <path fill="#253139" d="M25 50h2v7h-2zM71 50h2v7h-2z"/>
+  <path fill="#181f26" d="M40 49h17v7H40z"/>
+  <path fill="#c36352" d="M43 52h3v-2h2v4h2v-3h2v2h2v1h-3v1h-4v-3h-1v1h-3z"/>
+  <path fill="#827c69" d="M37 42h7v2h-7zM54 42h7v2h-7z"/>
+  <path fill="#11191f" d="M21 56h9v6h-9zM69 56h9v6h-9z"/>
+  <path fill="#56616a" d="M23 57h5v4h-5zM71 57h5v4h-5z"/>
+  <path fill="#222e35" d="M25 58h1v2h-1zM73 58h1v2h-1z"/>
+</svg>

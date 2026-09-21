@@ -16,14 +16,19 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="WaveBeasts">
-<meta property="og:title" content="{% block og_title %}WaveBeasts{% endblock %}">
-<meta property="og:description" content="{% block og_desc %}Turn the real world into monsters. Scan signals, catch WaveBeasts, trade and battle across a network of listener nodes.{% endblock %}">
-<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'og.png' %}">
-<meta property="og:url" content="{{ request.build_absolute_uri }}">
+<meta property="og:title" content="{% block og_title %}WaveBeasts · A creature in every signal{% endblock %}">
+<meta property="og:description" content="{% block og_desc %}Scan the world. Catch, train, trade and battle your WaveBeasts. Play locally or connect your collection across devices.{% endblock %}">
+<meta property="og:image" content="{{ public_site_url }}{% static 'social-card-v2.png' %}">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="WaveBeasts — red-eyed waveform beast logo. Scan the world. Catch, train, trade, battle.">
+<meta property="og:url" content="{{ public_site_url }}{{ request.path }}">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="WaveBeasts">
-<meta name="twitter:description" content="Turn the real world into monsters. Scan, catch, trade, battle.">
-<meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'og.png' %}">
+<meta name="twitter:title" content="WaveBeasts · A creature in every signal">
+<meta name="twitter:description" content="Scan the world. Catch, train, trade and battle your WaveBeasts. Play locally or connect your collection across devices.">
+<meta name="twitter:image" content="{{ public_site_url }}{% static 'social-card-v2.png' %}">
+<meta name="twitter:image:alt" content="WaveBeasts — red-eyed waveform beast logo. Scan the world. Catch, train, trade, battle.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>

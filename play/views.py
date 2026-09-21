@@ -11,7 +11,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import F, Q
 from django.http import HttpResponse, JsonResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -327,8 +327,12 @@ def dashboard(request):
 
 
 @login_required
+@require_POST
 def catch(request, beast_id):
     beast = get_object_or_404(OwnedBeast, id=beast_id, user=request.user, status="wild")
+    if beast.expires_at and beast.expires_at <= timezone.now():
+        beast.delete()
+        return redirect("dashboard")
     drive = request.POST.get("drive", "spark_drive")
     inv = InventoryItem.objects.filter(user=request.user, item_id=drive, qty__gt=0).first()
     if inv:
@@ -337,6 +341,7 @@ def catch(request, beast_id):
         p = 0.4 * DRIVE_MULT.get(drive, 1.0) * (0.2 + 0.8 * 0.5) * RARITY_RESIST.get(beast.rarity, 1.0)
         if random.random() < max(0.02, min(0.95, p)):
             beast.status = "owned"
+            beast.expires_at = None
             beast.save()
     return redirect("dashboard")
 
@@ -1097,7 +1102,9 @@ def _beast_row(b):
            "types": (b.species_json or {}).get("types", []), "nickname": ind.get("nickname", ""),
            "nature": ind.get("nature", ""), "hp": hp, "hp_max": HP_MAX, "fainted": hp <= 0}
     if b.status == "wild" and b.expires_at:
-        row["expires_in"] = max(0, int((b.expires_at - timezone.now()).total_seconds()))
+        row["expires_in"] = b.expires_in
+        row["expires_at"] = b.expires_at.isoformat()
+        row["expiry_duration"] = b.expiry_duration
     return row
 
 
@@ -1115,7 +1122,7 @@ def api_catch(request):
     beast = OwnedBeast.objects.filter(id=data.get("beast_id"), user=node.user, status="wild").first()
     if not beast:
         return JsonResponse({"error": "no such wild sighting"}, status=404)
-    if beast.expires_at and beast.expires_at < timezone.now():
+    if beast.expires_at and beast.expires_at <= timezone.now():
         beast.delete()
         return JsonResponse({"error": "that sighting expired", "expired": True}, status=410)
     drive = str(data.get("drive") or "spark_drive")
@@ -1325,7 +1332,9 @@ def _healthy_party_beasts(user):
 def _cull_wilds(user):
     """Expire timed-out wild sightings and keep only the newest MAX_UNSEEN_WILD pending ones."""
     now = timezone.now()
-    OwnedBeast.objects.filter(user=user, status="wild", expires_at__lt=now).delete()
+    OwnedBeast.objects.filter(user=user, status="wild", expires_at__isnull=True).update(
+        expires_at=F("caught_at") + timezone.timedelta(seconds=WILD_TTL_SEC))
+    OwnedBeast.objects.filter(user=user, status="wild", expires_at__lte=now).delete()
     extra = list(OwnedBeast.objects.filter(user=user, status="wild").order_by("-caught_at")
                  .values_list("id", flat=True)[MAX_UNSEEN_WILD:])
     if extra:

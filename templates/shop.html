@@ -3,8 +3,7 @@
 {% block title %}Supply Shop · WaveBeasts{% endblock %}
 {% block content %}
 <div class="page-heading"><div><div class="eyebrow">Gear up / Go further</div><h1 class="signal-title">Supply shop</h1><p>Catch something strange. Bring it home. Keep it fighting.</p></div><div class="stack"><span class="chip silver">Shards <b>{{ wallet.shards }}</b></span><span class="chip acc">Cores <b>{{ wallet.cores }}</b></span></div></div>
-<div class="storefront"><img src="{% static 'brand/storefront.png' %}" alt="A red-eyed shopkeeper waits in a pixel-art supply store beneath a glowing waveform sign" width="2172" height="724"></div>
-<div class="store-caption"><b>GOOD GEAR. STRANGE COMPANY.</b><p>Account inventory · Purchases are available to your linked apps.</p></div>
+<div class="shop-welcome"><p>Account inventory · Purchases are available to your linked apps.</p><img class="shop-cart" src="{% static 'brand/shop-cart.svg' %}" alt="" aria-hidden="true" width="192" height="128"></div>
 {% if shop_msg %}<div class="shop-feedback" role="status">{{ shop_msg }}</div>{% endif %}
 {% if shop_err %}<div class="shop-feedback error" role="alert">{{ shop_err }}</div>{% endif %}
 <div id="supply-shop" data-shards="{{ wallet.shards }}" data-cores="{{ wallet.cores }}">

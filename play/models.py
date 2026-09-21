@@ -132,6 +132,10 @@ class OwnedBeast(models.Model):
         return None
 
     @property
+    def expiry_duration(self):
+        return max(1, int((self.expires_at - self.caught_at).total_seconds())) if self.expires_at else 86400
+
+    @property
     def expires_label(self):
         s = self.expires_in
         if s is None:

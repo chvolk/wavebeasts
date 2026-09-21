@@ -49,3 +49,25 @@ offers an offline reconnect screen. The standalone app has the separate local ga
 iOS install guidance follows [WebKit's Home Screen documentation](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/)
 and [Safari 26 web app changes](https://webkit.org/blog/17333/webkit-features-in-safari-26-0/).
 Android manifest checks follow [Chrome's installability guidance](https://developer.chrome.com/docs/lighthouse/pwa/installable-manifest).
+
+## 0.12.2 follow-up
+
+The large generated shop illustration was removed from both bundled asset sets. A hand-drawn
+96×64 vector pixel sprite now supplies the cart, hooded keeper, blink/breathing and lantern idle;
+reduced-motion disables animation. There is no “Strange company” tagline.
+
+Wild account sightings expose their deadline/lifetime through the API and the local `/node/beasts`
+relay. Website and standalone Beasts views show a bar and live HH:MM:SS / MM:SS countdown.
+Zero disables catch controls; server-side web catches reject expired sightings without consuming
+inventory. Legacy sightings receive a deadline based on their original creation time.
+
+77 Django tests pass, including expiry API/page parity, legacy deadlines and expired catches.
+Go tests and browser checks pass for the account relay, live decrement, zero state, responsive shop,
+and the three-desktop/two-mobile download layout. The social card is a 1200×630 PNG rendered from
+the existing pixel font and vector logo; OG/Twitter URLs use the canonical HTTPS site URL and a
+new filename. Regenerate with `scripts/render-social-card.py`.
+
+The iOS simulator test initially exposed XcodeGen overwriting the release version with 1.0/build 1;
+explicit generated-plist properties now preserve 0.12.2/build 21. iOS uses Apple Vision as a fallback
+when WKWebView lacks BarcodeDetector, with a generated-QR decoding test. Sensor/camera bridge
+messages are restricted to loopback content, and external account links open outside the local web view.

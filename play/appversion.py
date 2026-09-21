@@ -2,6 +2,6 @@
 the app compares its installed versionCode against this and prompts to update. Keep VERSION_CODE in sync
 with android/app/build.gradle's versionCode in the wavebeast repo."""
 
-VERSION_CODE = 20
-VERSION_NAME = "0.12.1"
-NOTES = "Camera scans now grab codes automatically and close with a preview. Additional inputs replace the previous value of the same type. World shows your linked account email, plan and balances, and validates codes before linking."
+VERSION_CODE = 21
+VERSION_NAME = "0.12.2"
+NOTES = "A tiny animated pixel cart and hooded keeper replace the large shop illustration. Account wild sightings now appear in Beasts with a live countdown and expiry bar."

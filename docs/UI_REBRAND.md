@@ -24,9 +24,12 @@ The website shows the existing account health pool (0–100), including passive 
 
 The SVG mark is the editable source for the favicon and launcher identity. In the engine checkout, `scripts/gen_icon.py` renders Android legacy/round icons, safe-area adaptive vector artwork, and the iOS icon; it requires CairoSVG. Android preview version: 0.12.0 (19).
 
-Storefront generated using the built-in imagegen tool. Final asset: `play/static/brand/storefront.png` (also copied into the engine). Generation prompt:
-
-> Use case: stylized-concept. Create a production pixel-art banner asset for the WaveBeasts monster collecting game's shop. Wide 3:1 landscape composition. A beautiful detailed 16-bit side-view nocturnal electronics and monster-supply storefront, dark charcoal metal shutters and angular industrial architecture, glowing vermilion red striped awning, a tiny mysterious shopkeeper with two red eyes behind the counter, shelves of pixelated capture cartridges, potions and food, silver waveform motif across the shop sign. Restrained charcoal black, warm white silver, signal red and small amber lights palette. Crisp deliberate square pixels, arcade adventure game environment art, strong silhouette, charming and slightly eerie. Shop centered with atmospheric cables and antennas at sides, all major details in center safe area for mobile cropping. No lettering, no words, no watermark, no rounded app frame. Actual standalone artwork, not a website mockup. Save generated asset to disk and return its path.
+The initial generated storefront was replaced in 0.12.2 with `play/static/brand/shop-cart.svg`:
+a hand-drawn 96×64 pixel cart and hooded keeper on a transparent background. Its small idle
+animations (breathing, blinking, lantern) stop under reduced-motion preferences. The large PNG
+and “Strange company” slogan were removed from both the website and engine bundles.
+The social image is `play/static/social-card-v2.png`, rendered from the bundled pixel font and
+SVG logo using `scripts/render-social-card.py`.
 
 ## Validation
 

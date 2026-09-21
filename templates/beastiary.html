@@ -1,5 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Beastiary · WaveBeasts{% endblock %}
+{% load static %}
+{% block title %}Beastiary · WaveBeasts<script src="{% static 'brand/sightings.js' %}" defer></script>
+{% endblock %}
 {% block content %}
 <div class="stack" style="justify-content:space-between">
   <div><div class="eyebrow">Field archive / Your collection</div><h1 class="signal-title" style="margin:0">Beastiary</h1><p class="muted">Every signal has a creature waiting inside.</p></div>
@@ -42,13 +44,16 @@
 <div class="section-label">Wild sightings · catch them · {{ wild|length }}</div>
 <div class="beasts">
   {% for b in wild %}
-  <div class="beast">
+  <div class="beast" data-wild-card>
     {% if b.shiny %}<span class="shiny">SHINY</span>{% endif %}
     <div class="stage" style="opacity:.85"><img src="/sprite/{{ b.id }}.png" alt="" loading="lazy"></div>
     <div class="nm">{{ b.name }}</div>
     <div class="ty">{{ b.types_display }}</div>
     <span class="tag rt-{{ b.rarity }}">{{ b.rarity }}</span>
-    {% if b.expires_label %}<div class="dim" style="font-size:11px;margin-top:4px">expires in {{ b.expires_label }}</div>{% endif %}
+    {% if b.expires_at %}<div class="sighting-expiry" data-expires-in="{{ b.expires_in }}" data-expiry-duration="{{ b.expiry_duration }}">
+      <div class="expiry-label"><span>TIME LEFT</span><b data-expiry-text>{{ b.expires_label }}</b></div>
+      <div class="expiry-track" role="progressbar" aria-label="Sighting time remaining" aria-valuemin="0" aria-valuemax="{{ b.expiry_duration }}" aria-valuenow="{{ b.expires_in }}"><i></i></div>
+    </div>{% endif %}
     <form method="post" action="/beast/{{ b.id }}/catch" class="stack" style="margin-top:8px;gap:6px">{% csrf_token %}
       <select name="drive" class="grow" style="padding:7px">
         <option value="spark_drive">Spark</option><option value="pulse_drive">Pulse</option>
@@ -60,4 +65,5 @@
   {% endfor %}
 </div>
 {% endif %}
+<script src="{% static 'brand/sightings.js' %}" defer></script>
 {% endblock %}

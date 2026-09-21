@@ -7,15 +7,16 @@
 <div class="card" style="margin-bottom:24px"><div class="eyebrow">iOS / Android / Desktop</div><h2>Install the web app</h2><p class="muted">Keep your online beastiary, shop, and battles on your home screen. Online features need a connection.</p><button id="pwa-install" class="btn" type="button" hidden>Install WaveBeasts</button><p id="pwa-install-hint" class="muted" hidden></p><noscript><p>Use your browser’s Install app or Add to Home Screen option.</p></noscript></div>
 {% with base="https://github.com/chvolk/wavebeast-dl/releases/latest/download" %}
 <style>
-  .dlgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-  .dltile{background:linear-gradient(180deg,var(--panel),#0f0f12);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;box-shadow:var(--shadow)}
-  .dltile .os{font-family:'Space Grotesk';font-weight:700;letter-spacing:1px;margin-bottom:2px}
+  .dlgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  .dltile{background:linear-gradient(180deg,var(--panel),#0f0f12);border:1px solid var(--line);border-radius:0;padding:16px;text-align:center;box-shadow:var(--shadow)}
+  .dltile .os{font-family:var(--pixel);font-weight:700;letter-spacing:1px;margin-bottom:2px}
   .dltile .sub{color:var(--dim);font-size:12px;min-height:30px;margin-bottom:10px}
   .dltile .btn{width:100%;justify-content:center}
+  .dlgrid-mobile{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:14px}
   .cli{display:flex;flex-direction:column;gap:12px}
-  .cli .lab{font-family:'Space Grotesk';font-size:12px;letter-spacing:1px;color:var(--silver);margin-bottom:4px}
-  @media(max-width:820px){.dlgrid{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:460px){.dlgrid{grid-template-columns:1fr}}
+  .cli .lab{font-family:var(--pixel);font-size:12px;letter-spacing:1px;color:var(--silver);margin-bottom:4px}
+  @media(max-width:650px){.dlgrid{grid-template-columns:1fr}.dlgrid-mobile{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:380px){.dlgrid-mobile{grid-template-columns:1fr}}
 </style>
 
 <h1 style="margin:0 0 4px">Download WaveBeast</h1>
@@ -33,26 +34,37 @@ battle. Link this account to trade &amp; battle worldwide.</p>
   <p><a href="/docs/ai-setup/">Open the full AI setup guide ↗</a></p>
 </section>
 
-<div class="dlgrid">
+<div class="dlgrid" aria-label="Desktop downloads">
   <div class="dltile">
-    <div class="os">Android</div>
-    <div class="sub">Phone sensors, camera, barcode &amp; QR.</div>
-    <a class="btn" href="/download/app.apk">APK</a>
+    <div class="os">Linux / Pi</div>
+    <div class="sub">Linux desktop or Raspberry Pi.</div>
+    <a class="btn" href="{{ base }}/wavebeast-linux-amd64">Linux x64</a>
+    <p><a href="{{ base }}/wavebeast-linux-arm64">ARM64 / Pi 4–5</a> · <a href="{{ base }}/wavebeast-linux-armv7">ARMv7</a></p>
+  </div>
+  <div class="dltile">
+    <div class="os">macOS</div>
+    <div class="sub">Apple Silicon and Intel Macs.</div>
+    <a class="btn" href="{{ base }}/wavebeast-macos-arm64">Apple Silicon</a>
+    <p><a href="{{ base }}/wavebeast-macos-amd64">Intel Mac</a></p>
   </div>
   <div class="dltile">
     <div class="os">Windows</div>
     <div class="sub">Run it, then open localhost:8777.</div>
-    <a class="btn" href="{{ base }}/wavebeast-windows-amd64.exe">.exe (x64)</a>
+    <a class="btn" href="{{ base }}/wavebeast-windows-amd64.exe">Windows x64</a>
+  </div>
+</div>
+<div class="dlgrid dlgrid-mobile" aria-label="Mobile downloads">
+  <div class="dltile">
+    <div class="os">Android</div>
+    <div class="sub">Local game, phone sensors and camera.</div>
+    <a class="btn" href="/download/app.apk">Download APK</a>
   </div>
   <div class="dltile">
-    <div class="os">macOS</div>
-    <div class="sub">Apple Silicon (Intel below).</div>
-    <a class="btn" href="{{ base }}/wavebeast-macos-arm64">Apple Silicon</a>
-  </div>
-  <div class="dltile">
-    <div class="os">Linux / Pi</div>
-    <div class="sub">Static binary, incl. Raspberry Pi.</div>
-    <a class="btn" href="{{ base }}/wavebeast-linux-arm64">ARM64 (Pi 4/5)</a>
+    <div class="os">iOS / iPadOS</div>
+    <div class="sub">Local game for iPhone and iPad.</div>
+    <a class="btn" href="{{ base }}/wavebeast-ios-unsigned.ipa">Download IPA</a>
+    <p class="muted" style="font-size:12px">Unsigned · Sign with your Apple account using a sideloading tool before installing. This is not an App Store or TestFlight install.</p>
+    <a href="/docs/local-play/#ios">iOS install guide ↗</a>
   </div>
 </div>
 

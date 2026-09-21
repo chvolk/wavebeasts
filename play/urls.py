@@ -5,6 +5,8 @@ from . import views
 urlpatterns = [
     path("", views.landing, name="landing"),
     path("download/", views.download, name="download"),
+    path("privacy/", views.privacy, name="privacy"),
+    path("terms/", views.terms, name="terms"),
     path("download/app.apk", views.app_apk, name="app_apk"),
     path("api/app/version", views.app_version, name="app_version"),
     path("signup/", views.signup, name="signup"),

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Terms & Conditions · WaveBeasts{% endblock %}
+{% block content %}
+<style>
+  .legal{max-width:820px;margin:0 auto}
+  .legal h1{margin:0 0 4px}
+  .legal .eff{color:var(--dim);font-size:13px;margin-bottom:20px}
+  .legal h2{font-family:'Space Grotesk';font-size:17px;margin:26px 0 8px}
+  .legal p,.legal li{color:var(--ink);font-size:14.5px;line-height:1.6}
+  .legal ul{padding-left:20px}
+  .legal .note{color:var(--dim);font-size:12.5px;margin-top:28px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+<div class="legal">
+  <h1 class="wordmark">Terms &amp; Conditions</h1>
+  <div class="eff">Last updated: September 2026</div>
+
+  <p>By creating an account or using WaveBeasts (the "Service"), you agree to these terms. If you don't
+  agree, please don't use the Service. Local, offline play needs no account and isn't governed by the
+  account terms below.</p>
+
+  <h2>Your account</h2>
+  <ul>
+    <li>You're responsible for your account, your node tokens, and activity under them. Keep your tokens
+      private.</li>
+    <li>One person, real usage — don't create accounts or nodes to abuse the Service.</li>
+  </ul>
+
+  <h2>Fair play</h2>
+  <ul>
+    <li>Play the game as intended. Don't modify, forge, script, or otherwise fabricate beasts, stats, or
+      currency for the online service. Only legitimately generated ("verified") beasts are eligible for
+      trading and battles.</li>
+    <li>Don't attempt to reverse-engineer, overload, or interfere with the Service or other players.</li>
+  </ul>
+
+  <h2>Virtual items</h2>
+  <p>Beasts, currency (shards/cores), and items exist only within the game, have <b>no real-world value</b>,
+  and can't be exchanged for money. We may adjust, reset, or remove in-game content as the game develops.
+  Some features may be offered as paid subscriptions in the future; paid terms will be shown at purchase.</p>
+
+  <h2>Your content</h2>
+  <p>You keep ownership of anything you submit (e.g. scans). You grant us the limited right to process it to
+  run the Service, as described in the <a href="/privacy/" style="color:var(--red)">Privacy Policy</a>. Don't
+  submit anything unlawful or that infringes others' rights.</p>
+
+  <h2>Availability & changes</h2>
+  <p>WaveBeasts is an evolving, best-effort service provided <b>"as is"</b>, without warranties. We may
+  change, suspend, wipe, or discontinue features (or the whole Service) at any time. To the extent allowed
+  by law, we aren't liable for lost progress, items, or data.</p>
+
+  <h2>Termination</h2>
+  <p>You can stop using the Service and request deletion any time. We may suspend or remove accounts that
+  break these terms or abuse the Service.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about these terms? Reach us through the account you signed up with.</p>
+
+  <div class="note">These are plain-language terms for a hobby/beta service, provided for transparency, not
+  as legal advice.</div>
+</div>
+{% endblock %}

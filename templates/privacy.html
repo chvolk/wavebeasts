@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy · WaveBeasts{% endblock %}
+{% block content %}
+<style>
+  .legal{max-width:820px;margin:0 auto}
+  .legal h1{margin:0 0 4px}
+  .legal .eff{color:var(--dim);font-size:13px;margin-bottom:20px}
+  .legal h2{font-family:'Space Grotesk';font-size:17px;margin:26px 0 8px}
+  .legal p,.legal li{color:var(--ink);font-size:14.5px;line-height:1.6}
+  .legal ul{padding-left:20px}
+  .legal .note{color:var(--dim);font-size:12.5px;margin-top:28px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+<div class="legal">
+  <h1 class="wordmark">Privacy Policy</h1>
+  <div class="eff">Last updated: September 2026</div>
+
+  <p>WaveBeasts is a scan-to-creature game. This policy explains what we collect, why, and your choices.
+  The short version: <b>we collect only what the game needs to work, we don't run ads or third-party
+  trackers, and we never sell your data.</b></p>
+
+  <h2>What we collect</h2>
+  <ul>
+    <li><b>Account info</b> — the username you choose and a securely hashed password. We don't require an
+      email or real name.</li>
+    <li><b>Game data</b> — the beasts you catch, your currency and items, your buddy, your battle/trade
+      activity, and the devices ("nodes") you register (each with a random token you create).</li>
+    <li><b>Scan snapshots</b> — when a device you've linked submits a scan, it sends a bundle of
+      real-world signal readings (e.g. nearby Wi-Fi/Bluetooth identifiers, sensor values). We use these to
+      generate a beast on the server. We store a small record of the outcome (what was generated) rather
+      than a long-term log of your raw environment.</li>
+    <li><b>Basic technical data</b> — standard server request logs (IP address, timestamp) kept briefly for
+      security and reliability.</li>
+  </ul>
+
+  <h2>On your device</h2>
+  <p>The app and the standalone engine can run and generate beasts <b>locally</b>, offline, with no
+  account. The phone app reads device sensors (camera, location, etc.) only with your permission and only
+  to build a scan. That data stays on your device unless you link an account and choose to submit a
+  snapshot or upload your local collection.</p>
+
+  <h2>How we use it</h2>
+  <ul>
+    <li>To run the game: generate beasts, keep your collection, power battles, trades and your buddy.</li>
+    <li>To keep the service secure and working (anti-cheat, rate limits, abuse prevention).</li>
+  </ul>
+  <p>We do <b>not</b> sell or rent your data, we do <b>not</b> show ads, and we don't share your data with
+  third parties except infrastructure providers that host the service on our behalf (e.g. our hosting and
+  database provider), under their own safeguards.</p>
+
+  <h2>Cookies</h2>
+  <p>We use only <b>essential cookies</b> — a session cookie to keep you signed in and a security (CSRF)
+  cookie. We don't use advertising or analytics cookies. The site works with just these.</p>
+
+  <h2>Retention & your choices</h2>
+  <ul>
+    <li>We keep your data while your account is active.</li>
+    <li>You can release beasts, delete nodes, and request account deletion — which removes your account and
+      associated game data.</li>
+  </ul>
+
+  <h2>Children</h2>
+  <p>WaveBeasts isn't directed at children under 13, and we don't knowingly collect their data.</p>
+
+  <h2>Changes & contact</h2>
+  <p>We may update this policy as the game evolves; we'll change the date above. Questions or a deletion
+  request? Reach us through the account you signed up with.</p>
+
+  <div class="note">This is a plain-language policy for a hobby/beta service and is provided for
+  transparency, not as legal advice.</div>
+</div>
+{% endblock %}

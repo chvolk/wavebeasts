@@ -47,6 +47,14 @@ def download(request):
     return render(request, "download.html", {"nav": "download"})
 
 
+def privacy(request):
+    return render(request, "privacy.html", {"nav": ""})
+
+
+def terms(request):
+    return render(request, "terms.html", {"nav": ""})
+
+
 def app_version(request):
     """Version manifest the Android app polls to prompt for updates."""
     from . import appversion

@@ -102,7 +102,7 @@ class BuddyApiTests(TestCase):
         self.assertEqual(r.status_code, 403)
 
 
-@override_settings(ALLOWED_HOSTS=["testserver"])
+@override_settings(ALLOWED_HOSTS=["testserver"], CLERK_SECRET_KEY="")
 class AuthBillingTests(TestCase):
     def test_auth_pages_render(self):
         self.assertEqual(self.client.get("/sign-in/").status_code, 200)

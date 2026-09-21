@@ -1,13 +1,18 @@
 from django.urls import path
 
-from . import views
+from . import views, pwa
 
 urlpatterns = [
+    path("service-worker.js", pwa.service_worker, name="service_worker"),
+    path("manifest.webmanifest", pwa.manifest, name="web_manifest"),
+    path("favicon.ico", pwa.favicon, name="favicon"),
     path("", views.landing, name="landing"),
     path("download/", views.download, name="download"),
     path("privacy/", views.privacy, name="privacy"),
     path("terms/", views.terms, name="terms"),
     path("docs/", views.docs, name="docs"),
+    path("docs/ai-setup/<str:mode>.txt", views.agent_setup_prompt, name="agent_setup_prompt"),
+    path("docs/<slug:page>/", views.docs, name="wiki_page"),
     path("download/wavebeast-node.py", views.node_client, name="node_client"),
     path("download/app.apk", views.app_apk, name="app_apk"),
     path("api/app/version", views.app_version, name="app_version"),
@@ -48,6 +53,7 @@ urlpatterns = [
     path("api/snapshot", views.api_snapshot, name="api_snapshot"),
     path("api/import", views.api_import, name="api_import"),
 
+    path("api/account", views.api_account, name="api_account"),
     path("api/beasts", views.api_beasts, name="api_beasts"),
     path("api/catch", views.api_catch, name="api_catch"),
     path("api/nickname", views.api_nickname, name="api_nickname"),

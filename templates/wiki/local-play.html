@@ -1,0 +1,16 @@
+<p class="lead">The engine is a single program that serves the game UI in your browser and stores your collection locally. You do not need a website account to play.</p>
+<p>Prefer hands-off setup? <a href="/docs/ai-setup/#local-prompt">Give an AI agent the local-play prompt</a>.</p>
+<h2>1. Get the right build</h2><p>Choose your operating system and CPU on <a href="/download/">Downloads</a>. Android has a standalone APK with the engine built in. Desktop and Pi releases are executables that open a local browser interface.</p>
+<table><tr><th>Platform</th><th>Asset</th></tr><tr><td>Linux x64 / ARM64 / ARMv7</td><td><code>wavebeast-linux-amd64</code> / <code>wavebeast-linux-arm64</code> / <code>wavebeast-linux-armv7</code></td></tr><tr><td>macOS Intel / Apple Silicon</td><td><code>wavebeast-macos-amd64</code> / <code>wavebeast-macos-arm64</code></td></tr><tr><td>Windows x64</td><td><code>wavebeast-windows-amd64.exe</code></td></tr></table>
+<h2>2. Start the engine</h2><p>Example for <b>Linux x64</b>. Keep the database outside the executable directory:</p>
+<pre><code>mkdir -p "$HOME/.local/bin" "$HOME/.local/share/wavebeast"
+curl -fL https://github.com/chvolk/wavebeast-dl/releases/latest/download/wavebeast-linux-amd64 -o "$HOME/.local/bin/wavebeast"
+chmod +x "$HOME/.local/bin/wavebeast"
+"$HOME/.local/bin/wavebeast" -addr 127.0.0.1:8777 -db "$HOME/.local/share/wavebeast/wavebeast.db"</code></pre>
+<p>On Windows, download the EXE, create a data directory, and run it in PowerShell:</p>
+<pre><code>New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\WaveBeast"
+.\wavebeast-windows-amd64.exe -addr 127.0.0.1:8777 -db "$env:LOCALAPPDATA\WaveBeast\wavebeast.db"</code></pre>
+<p>On macOS, use the matching macOS binary, make it executable, and choose a database path under your user’s Application Support directory. The same <code>-addr</code> and <code>-db</code> flags apply.</p>
+<h2>3. Open and verify</h2><p>Visit <a href="http://127.0.0.1:8777/">http://127.0.0.1:8777/</a> on that device. <code>/capabilities</code> should return JSON with <code>engine: wavebeast</code>. Enter a real code or use available sensors, then Sweep.</p>
+<p>The engine must stay running while you use the GUI. Stop it with Ctrl+C. Restart with the same database path to keep your collection. Local beasts start each battle at full battle HP; the online account has a separate persistent health pool.</p>
+<h2>Local vs linked play</h2><p>The <b>World</b> tab optionally links a node code from your online account. It displays your account details and lets you submit snapshots. Linking does not merge your local and online wallets. See <a href="/docs/nodes/">listener nodes</a> and <a href="/docs/premium/">Free &amp; Premium</a> for online features.</p>

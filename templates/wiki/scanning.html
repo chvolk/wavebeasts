@@ -1,0 +1,27 @@
+    <h2 id="how">How it works</h2>
+    <p>A <b>scan</b> bundles the signals a device can read into a <code>ScanBundle</code> and submits it. The
+    server distills two numbers from it:</p>
+    <ul>
+      <li><b>Entropy</b> - how much genuine, varied information the reading carries.</li>
+      <li><b>Coherence</b> (0.4-1.0) - whether the signals reinforce or cancel. Aligned signals reinforce;
+      opposed phases, heavy motion, and saturated signals cancel.</li>
+    </ul>
+    <p>The <b>effective entropy</b> that drives every roll is <code>entropy × coherence</code> - so more data
+    is not a guaranteed win. Each scan resolves to one of three outcomes:</p>
+    <ul>
+      <li><b>Beast</b> - a creature appears. This needs an <i>identity</i> signal (QR &gt; barcode &gt; NFC &gt;
+      image features, or a derived identity from ambient Wi-Fi/sensors). Chance rises with entropy.</li>
+      <li><b>Resource</b> - currency, food, or a drive (see below).</li>
+      <li><b>Nothing</b> - even a good reading can collapse to nothing via destructive interference.</li>
+    </ul>
+    <p>For account play, stats are rolled <b>server-side</b> with a per-scan secret nonce, so clients do not choose their account beasts’ stats. The species is deterministic from the bundle; the individual is not.</p>
+
+
+    <h2 id="currencies">Currencies</h2>
+    <table>
+      <tr><th>Currency</th><th>Type</th><th>Used for</th></tr>
+      <tr><td><b>Shards</b></td><td>soft (start 50)</td><td>Drives, food, potions/revives</td></tr>
+      <tr><td><b>Cores</b></td><td>rare currency (start 0)</td><td>Nova Drive, node boosts</td></tr>
+    </table>
+    <p class="lead">Both drop from <b>resource</b> scans, scaled by entropy.</p>
+

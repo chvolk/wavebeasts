@@ -1,0 +1,18 @@
+Set up a WaveBeasts listener node on this machine. This is an account-linked sensor uploader, not the full game engine.
+
+Official resources:
+- Guide: {{ site_url }}/docs/nodes/
+- Python listener: {{ site_url }}/download/wavebeast-node.py
+- Account identity: GET {{ site_url }}/api/account
+- Submission: POST {{ site_url }}/api/snapshot
+- Both APIs use X-WB-Node-Token with my WB_NODE_TOKEN.
+
+1. Inspect the OS, Python 3 availability, network access, existing WaveBeast processes/services, and real sensors. Reuse an existing working installation instead of starting duplicate listeners. Explain which sensors actually work. The client uses nmcli on Linux for Wi-Fi; it does not invent readings when nmcli or a sensor is absent.
+2. Download the official Python file into a durable user-owned directory. It uses only Python's standard library. Read it before running it. No private source checkout or Go installation is required.
+3. Use WB_SITE={{ site_url }} and a private environment file for WB_NODE_TOKEN. Have me create a device on {{ site_url }}/nodes/ if I have no code yet. Do not put the token in chat, logs, shell history, a committed file, or a public service definition. Restrict the file to the current user. Read it without displaying its contents.
+4. Verify the code with GET /api/account. Show only the account name/plan and device name; keep credentials private. A 403 means a revoked or invalid node code. Do not retry it indefinitely.
+5. Run one cycle using WB_ONCE=1. Check the response/log, not just the exit code: this client may exit zero after a failed request. Confirm an accepted HTTP 200 snapshot and the number of real signals. No sensors is a setup limitation to report, not a reason to fabricate entropy or loop faster. If a code is the only available real input, help configure that explicitly.
+6. Honor next_snapshot_in on accepted responses and retry_after on HTTP 429. The default is 300 seconds; a Premium boost can reduce it to 100 seconds temporarily. Never bypass the server's cadence. On connection failures, back off rather than busy-looping.
+7. If I want it always running, use the OS-appropriate per-user background mechanism: systemd --user on supported Linux, launchd on macOS, or Task Scheduler on Windows. First verify the foreground run. Use absolute executable/script paths and an environment file or secure wrapper. On systemd use Restart=on-failure, RestartSec=15, PYTHONUNBUFFERED=1, and WantedBy=default.target. Do not create a root service by default. Explain whether it stops at logout, and arrange boot/startup only when requested.
+8. Additional actual sensors may be supplied with WB_ENVIRON_URL (a JSON endpoint) or WB_SIGNALS_CMD (a command producing a JSON array of signals). Each signal uses kind, normalized strength from 0 to 1, and value. Test adapters separately; never log secrets. Do not use random or synthetic readings for gameplay.
+9. Report the install path, sensor sources, service/task name, status, accepted snapshot result and cadence. Include exact start, stop, status/log and uninstall commands. Uninstall must remove the service and program without deleting unrelated files. Do not claim success until the real API test passes.

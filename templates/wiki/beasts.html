@@ -1,0 +1,59 @@
+    <h2 id="types">Beasts &amp; types</h2>
+    <p>There are <b>nine elements</b>:</p>
+    <p>
+      <span class="pill t-ember">ember</span><span class="pill t-tide">tide</span><span class="pill t-leaf">leaf</span>
+      <span class="pill t-spark">spark</span><span class="pill t-stone">stone</span><span class="pill t-gale">gale</span>
+      <span class="pill t-frost">frost</span><span class="pill t-shade">shade</span><span class="pill t-lumen">lumen</span>
+    </p>
+    <p>Every beast has one type, with a <b>35% chance of a second (dual) type</b>. <b>Shade</b> and <b>lumen</b>
+    are a mirror pair - each beats the other and resists itself - a light/dark axis orthogonal to the
+    elemental wheel.</p>
+
+
+    <h2 id="rarity">Rarity &amp; shinies</h2>
+    <p>Five tiers, weighted by effective entropy - higher entropy shifts the odds toward the top:</p>
+    <p>
+      <span class="pill">common</span><span class="pill" style="color:var(--silver);border-color:#4a4a54">uncommon</span>
+      <span class="pill" style="color:var(--silver-hi);border-color:var(--silver)">rare</span>
+      <span class="pill" style="color:var(--red-hi);border-color:var(--red-dim)">epic</span>
+      <span class="pill" style="color:var(--yellow-hi);border-color:var(--yellow)">legendary</span>
+    </p>
+    <p>Rarity also sets a <b>minimum IV floor</b> (better guaranteed stats) and a <b>catch resistance</b>
+    (harder to catch):</p>
+    <table>
+      <tr><th>Rarity</th><th>IV floor (of 31)</th><th>Catch resistance</th></tr>
+      <tr><td>common</td><td>0</td><td>1.00×</td></tr>
+      <tr><td>uncommon</td><td>4</td><td>0.85×</td></tr>
+      <tr><td>rare</td><td>8</td><td>0.65×</td></tr>
+      <tr><td>epic</td><td>12</td><td>0.45×</td></tr>
+      <tr><td>legendary</td><td>16</td><td>0.28×</td></tr>
+    </table>
+    <p><b>Shinies</b> are a rare alternate colouring, more likely at high entropy. The exact odds are
+    intentionally secret - treat them as very rare.</p>
+
+
+    <h2 id="natures">Natures</h2>
+    <p>Every individual carries one of <b>16 natures</b>. They're personality flavour - they do <b>not</b>
+    change stats; apps use them to theme behaviour (e.g. your Buddy's chat tone).</p>
+    <p class="lead">Brave · Timid · Playful · Grumpy · Loyal · Curious · Lazy · Fierce · Gentle · Clever · Wild
+    · Cheerful · Stoic · Mischievous · Bold · Shy</p>
+
+
+    <h2 id="tribes">Tribes &amp; stats</h2>
+    <p>Beasts have six stats: <b>HP, ATK, DEF, SPD, SP, RES</b> (base values 45-80). Each beast belongs to a
+    <b>tribe</b> that biases two of those stats (+18):</p>
+    <table>
+      <tr><th>Tribe</th><th>Favours</th></tr>
+      <tr><td>brawler</td><td>ATK, HP</td></tr>
+      <tr><td>warden</td><td>DEF, RES</td></tr>
+      <tr><td>skirmisher</td><td>SPD, ATK</td></tr>
+      <tr><td>channeler</td><td>SP, RES</td></tr>
+      <tr><td>colossus</td><td>HP, DEF</td></tr>
+      <tr><td>trickster</td><td>SPD, SP</td></tr>
+    </table>
+    <p>Stats scale with <b>level</b> (1->100). XP to the next level is <code>level³ × 15</code>. Beasts evolve
+    through <b>5 forms</b> at levels <b>1 / 16 / 32 / 48 / 64</b>, with stat multipliers 1.0 -> 1.25 -> 1.55 ->
+    1.9 -> 2.3.</p>
+    <p class="lead">Tribe passives (e.g. crit or damage perks) are defined but not yet applied in battle -
+    they're coming in a later update.</p>
+

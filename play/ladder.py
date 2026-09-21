@@ -1,6 +1,9 @@
 """Async-PvP ladder resolution, shared by the on-demand view and the passive matchmaker worker."""
 import random
 
+from django.db import transaction
+from django.db.models import F
+
 from . import resolver
 from .models import AsyncBattle, LadderTeam, Wallet
 
@@ -13,10 +16,17 @@ def _wallet(user):
     return w
 
 
+@transaction.atomic
 def resolve_match(a, b, initiator=None):
     """Resolve one ladder match between two LadderTeams via the Go resolver: update Elo + W/L, log an
     AsyncBattle for each side (seen only for the initiator, so passive matches show up "while you were
     away"), and pay the winner shards. Returns team a's result ('win'/'loss'/'draw') or None on error."""
+    teams = {t.pk: t for t in LadderTeam.objects.select_for_update().filter(pk__in=[a.pk, b.pk]).order_by("pk")}
+    a, b = teams.get(a.pk), teams.get(b.pk)
+    if not a or not b or not a.fighters or not b.fighters:
+        return None
+    if Wallet.objects.filter(user_id__in=[a.user_id, b.user_id], subscribed=True).count() != 2:
+        return None
     try:
         res = resolver.battle_auto(a.fighters, b.fighters)
     except Exception:
@@ -41,15 +51,13 @@ def resolve_match(a, b, initiator=None):
     AsyncBattle.objects.create(user=b.user, opponent=a.user.username, result=b_res, mmr_delta=-delta, turns=turns, seen=(b.user_id == getattr(initiator, "id", None)))
     winner_user = a.user if a_res == "win" else (b.user if b_res == "win" else None)
     if winner_user:
-        w = _wallet(winner_user)
-        w.shards += WIN_SHARDS
-        w.save(update_fields=["shards"])
+        Wallet.objects.filter(user=winner_user).update(shards=F("shards") + WIN_SHARDS)
     return a_res
 
 
 def run_round(limit=40):
     """Pair up ladder teams at random and resolve one match per pair. Returns matches played."""
-    teams = list(LadderTeam.objects.exclude(fighters=[]).select_related("user"))
+    teams = list(LadderTeam.objects.filter(user__wallet__subscribed=True).exclude(fighters=[]).select_related("user"))
     if len(teams) < 2:
         return 0
     random.shuffle(teams)

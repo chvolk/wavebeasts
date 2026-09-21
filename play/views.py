@@ -11,11 +11,15 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.http import HttpResponse, JsonResponse
+from django.db.models import Q
+from django.http import HttpResponse, JsonResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET, require_POST
+from django.core.cache import cache
 
 from . import billing as billing_mod, buddy as buddymod, clerkauth, ladder, resolver
 from .models import (AsyncBattle, Buddy, BattleRecord, InventoryItem, LadderTeam, Node,
@@ -84,8 +88,32 @@ def terms(request):
     return render(request, "terms.html", {"nav": ""})
 
 
-def docs(request):
-    return render(request, "docs.html", {"nav": "docs"})
+def docs(request, page="overview"):
+    from .wiki import PAGES
+    pages = [{"slug": slug, "title": title, "group": group, "url": "/docs/" if slug == "overview" else f"/docs/{slug}/"}
+             for slug, title, group in PAGES]
+    current = next((p for p in pages if p["slug"] == page), None)
+    if current is None:
+        raise Http404("No such wiki page")
+    index = pages.index(current)
+    context = {"nav": "docs", "wiki_pages": pages, "wiki_slug": page, "wiki_title": current["title"],
+               "wiki_template": f"wiki/{page}.html", "site_url": settings.SITE_URL.rstrip("/"),
+               "wiki_previous": pages[index - 1] if index else None,
+               "wiki_next": pages[index + 1] if index + 1 < len(pages) else None}
+    if page == "ai-setup":
+        context["node_prompt"] = render_to_string("agent-prompts/node.txt", context)
+        context["local_prompt"] = render_to_string("agent-prompts/local.txt", context)
+    return render(request, "docs.html", context)
+
+
+@require_GET
+def agent_setup_prompt(request, mode):
+    if mode not in {"node", "local"}:
+        raise Http404("No such setup prompt")
+    response = HttpResponse(render_to_string(f"agent-prompts/{mode}.txt", {"site_url": settings.SITE_URL.rstrip("/")}),
+                            content_type="text/plain; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="wavebeasts-{mode}-setup.txt"'
+    return response
 
 
 def node_client(request):
@@ -136,11 +164,7 @@ def auth_clerk(request):
         user.save()
         Wallet.objects.get_or_create(user=user)
         InventoryItem.objects.get_or_create(user=user, item_id="spark_drive", defaults={"qty": 3})
-    if created or not user.first_name:  # cache a friendly display name from Clerk (best-effort)
-        name = clerkauth.friendly_name(claims["sub"])
-        if name:
-            user.first_name = name
-            user.save(update_fields=["first_name"])
+    clerkauth.sync_profile(user)  # refresh verified identity, including primary email
     login(request, user)
     return JsonResponse({"ok": True, "redirect": "/me/" if _wallet(user).onboarded else "/onboarding/"})
 
@@ -170,6 +194,7 @@ def billing(request):
 
 
 @login_required
+@require_POST
 def checkout(request):
     plan = request.POST.get("plan", "monthly")
     base = settings.SITE_URL
@@ -184,7 +209,11 @@ def checkout(request):
 
 @login_required
 def billing_portal(request):
-    url = billing_mod.portal_url(_wallet(request.user), settings.SITE_URL + "/billing/")
+    try:
+        url = billing_mod.portal_url(_wallet(request.user), settings.SITE_URL + "/billing/")
+    except Exception:
+        request.session["billing_msg"] = "Billing portal is temporarily unavailable. Please try again."
+        return redirect("billing")
     return redirect(url or "billing")
 
 
@@ -192,6 +221,8 @@ def billing_portal(request):
 def stripe_webhook(request):
     import stripe
     secret = settings.STRIPE_WEBHOOK_SECRET
+    if not secret and not settings.DEBUG:
+        return HttpResponse("Webhook signing is not configured", status=503)
     try:
         if secret:
             event = stripe.Webhook.construct_event(request.body, request.META.get("HTTP_STRIPE_SIGNATURE", ""), secret)
@@ -210,7 +241,7 @@ def app_version(request):
         "version_code": appversion.VERSION_CODE,
         "version_name": appversion.VERSION_NAME,
         "notes": appversion.NOTES,
-        "apk_url": request.build_absolute_uri("/download/app.apk"),
+        "apk_url": settings.SITE_URL.rstrip("/") + "/download/app.apk",
     })
 
 
@@ -367,17 +398,22 @@ def node_app_token(request):
 
 
 @login_required
+@require_POST
 def node_boost(request, node_id):
     node = get_object_or_404(Node, id=node_id, user=request.user)
     if not _paid(request.user):
         request.session["nodes_msg"] = "Node boosts are a paid feature."
         return redirect("nodes")
-    w = _wallet(request.user)
-    if w.cores >= BOOST_COST_CORES:
-        w.cores -= BOOST_COST_CORES
-        w.save()
-        node.boosted_until = timezone.now() + timezone.timedelta(seconds=BOOST_DURATION_SEC)
-        node.save()
+    with transaction.atomic():
+        w = Wallet.objects.select_for_update().get(user=request.user)
+        node = Node.objects.select_for_update().get(pk=node.pk)
+        if w.cores >= BOOST_COST_CORES:
+            w.cores -= BOOST_COST_CORES
+            w.save(update_fields=["cores"])
+            node.boosted_until = max(node.boosted_until or timezone.now(), timezone.now()) + timezone.timedelta(seconds=BOOST_DURATION_SEC)
+            node.save(update_fields=["boosted_until"])
+        else:
+            request.session["nodes_msg"] = "You need 1 core to boost a node."
     return redirect("nodes")
 
 
@@ -412,26 +448,41 @@ def trade(request):
 
 
 @login_required
+@require_POST
 def trade_list_beast(request):
-    if request.method == "POST":
-        if not _paid(request.user):
-            request.session["trade_msg"] = "Trading is a paid feature."
-            return redirect("trade")
-        beast = get_object_or_404(OwnedBeast, id=request.POST.get("beast_id"), user=request.user, status="owned")
+    if not _paid(request.user):
+        request.session["trade_msg"] = "Trading is a paid feature."
+        return redirect("trade")
+    with transaction.atomic():
+        Wallet.objects.select_for_update().get(user=request.user)
+        beast = get_object_or_404(OwnedBeast.objects.select_for_update(), id=request.POST.get("beast_id"), user=request.user, status="owned")
+        tied = TradeOffer.objects.filter(status="pending").filter(Q(offered_beast=beast) | Q(offered_beasts=beast)).exists()
         if not beast.verified:
             request.session["trade_msg"] = "Only verified beasts (caught through a node) can be traded."
-        elif not TradeListing.objects.filter(beast=beast, is_open=True).exists():
-            TradeListing.objects.create(user=request.user, beast=beast, note=(request.POST.get("note") or "")[:200])
+        elif tied:
+            request.session["trade_msg"] = "Withdraw the pending offer before listing this beast."
+        else:
+            TradeListing.objects.update_or_create(beast=beast, defaults={"user": request.user, "is_open": True,
+                "note": (request.POST.get("note") or "")[:200]})
     return redirect("trade")
 
 
 @login_required
+@require_POST
 def trade_unlist(request, listing_id):
-    TradeListing.objects.filter(id=listing_id, user=request.user).update(is_open=False)
+    with transaction.atomic():
+        listing = get_object_or_404(TradeListing.objects.select_for_update(), id=listing_id, user=request.user)
+        listing.is_open = False
+        listing.save(update_fields=["is_open"])
+        for offer in listing.offers.select_for_update().filter(status="pending"):
+            _refund_offer(offer)
+            offer.status = "declined"
+            offer.save(update_fields=["status"])
     return redirect("trade")
 
 
 @login_required
+@require_POST
 def trade_offer(request, listing_id):
     if not _paid(request.user):
         request.session["trade_msg"] = "Trading is a paid feature."
@@ -454,6 +505,7 @@ def trade_offer(request, listing_id):
         request.session["trade_msg"] = f"You can offer at most {TradeOffer.MAX_BEASTS} beasts."
         return redirect("trade")
     with transaction.atomic():
+        listing = get_object_or_404(TradeListing.objects.select_for_update(), id=listing_id, is_open=True)
         wallet = Wallet.objects.select_for_update().get(user=request.user)
         # beasts must be yours, owned, verified, and not already tied up in a pending offer / listing
         tied = set(TradeOffer.objects.filter(from_user=request.user, status="pending")
@@ -488,6 +540,7 @@ def trade_offer(request, listing_id):
 
 
 @login_required
+@require_POST
 def trade_accept(request, offer_id):
     if not _paid(request.user):
         request.session["trade_msg"] = "Trading is a paid feature."
@@ -495,12 +548,18 @@ def trade_accept(request, offer_id):
     offer = get_object_or_404(TradeOffer, id=offer_id, listing__user=request.user, status="pending")
     with transaction.atomic():
         listing = TradeListing.objects.select_for_update().get(id=offer.listing_id)
+        offer = get_object_or_404(TradeOffer.objects.select_for_update(), id=offer_id, status="pending")
         if not listing.is_open:
             request.session["trade_msg"] = "That listing is no longer open."
             return redirect("trade")
         their_beasts = list(OwnedBeast.objects.select_for_update()
                             .filter(id__in=[b.id for b in offer.beasts()]))
         my_beast = OwnedBeast.objects.select_for_update().get(id=listing.beast_id)
+        if my_beast.user_id != request.user.id or any(b.user_id != offer.from_user_id or b.status != "owned" or not b.verified for b in their_beasts):
+            request.session["trade_msg"] = "One of the offered beasts is no longer available."
+            return redirect("trade")
+        _detach_beasts(request.user, [my_beast.id])
+        _detach_beasts(offer.from_user, [b.id for b in their_beasts])
         # give the lister the offered beasts + escrowed resources
         my_wallet = Wallet.objects.select_for_update().get(user=request.user)
         for tb in their_beasts:
@@ -526,6 +585,16 @@ def trade_accept(request, offer_id):
     return redirect("trade")
 
 
+def _detach_beasts(user, beast_ids):
+    """A transferred beast cannot remain a previous owner's buddy or competitive fighter."""
+    Buddy.objects.filter(user=user, beast_id__in=beast_ids).update(beast=None, carrier=None, last_event_at=None)
+    w = Wallet.objects.select_for_update().get(user=user)
+    removed = {str(i) for i in beast_ids}
+    w.team_ids = [i for i in w.team_ids if str(i) not in removed]
+    w.save(update_fields=["team_ids"])
+    LadderTeam.objects.filter(user=user).update(fighters=[])
+
+
 def _refund_offer(offer):
     """Return escrowed shards/cores to the offerer (beasts free themselves once status != pending)."""
     if offer.offered_shards or offer.offered_cores:
@@ -536,6 +605,7 @@ def _refund_offer(offer):
 
 
 @login_required
+@require_POST
 def trade_decline(request, offer_id):
     with transaction.atomic():
         offer = TradeOffer.objects.select_for_update().filter(
@@ -548,6 +618,7 @@ def trade_decline(request, offer_id):
 
 
 @login_required
+@require_POST
 def trade_withdraw(request, offer_id):
     """Offerer withdraws their own pending offer (refunds escrow, frees the beasts)."""
     with transaction.atomic():
@@ -568,7 +639,7 @@ def _fighter(b):
 
 def _team_for(user):
     ids = _wallet(user).team_ids or []
-    byid = {str(b.id): b for b in OwnedBeast.objects.filter(user=user, id__in=ids)}
+    byid = {str(b.id): b for b in OwnedBeast.objects.filter(user=user, status="owned", verified=True, id__in=ids)}
     return [_fighter(byid[str(i)]) for i in ids if str(i) in byid]
 
 
@@ -611,6 +682,7 @@ def battle(request):
 
 
 @login_required
+@require_POST
 def ladder_enter(request):
     if not _paid(request.user):
         request.session["ladder_msg"] = "The async ladder is a paid feature."
@@ -627,6 +699,7 @@ def ladder_enter(request):
 
 
 @login_required
+@require_POST
 def ladder_run(request):
     if not _paid(request.user):
         request.session["ladder_msg"] = "The async ladder is a paid feature."
@@ -635,7 +708,7 @@ def ladder_run(request):
     if not lt or not lt.fighters:
         request.session["ladder_msg"] = "Enter the ladder first."
         return redirect("battle")
-    opponents = list(LadderTeam.objects.exclude(user=request.user).exclude(fighters=[]).select_related("user"))
+    opponents = list(LadderTeam.objects.filter(user__wallet__subscribed=True).exclude(user=request.user).exclude(fighters=[]).select_related("user"))
     if not opponents:
         request.session["ladder_msg"] = "No opponents yet - check back once others join the ladder."
         return redirect("battle")
@@ -666,6 +739,7 @@ def set_team(request):
 
 
 @login_required
+@require_POST
 def battle_fight(request):
     if not _paid(request.user):
         request.session["last_battle"] = {"error": "Battles are a paid feature."}
@@ -676,7 +750,7 @@ def battle_fight(request):
         return redirect("battle")
     # opponent: a random other player's team, else a gym
     opp_name, opp_team = "Gym", []
-    others = list(Wallet.objects.exclude(user=request.user).exclude(team_ids=[]).select_related("user"))
+    others = list(Wallet.objects.filter(subscribed=True).exclude(user=request.user).exclude(team_ids=[]).select_related("user"))
     random.shuffle(others)
     for w in others:
         t = _team_for(w.user)
@@ -850,7 +924,10 @@ def api_release(request):
     buddy = getattr(node.user, "buddy", None)
     if buddy and buddy.beast_id == beast.id:
         return JsonResponse({"error": "unslot your buddy before releasing it"}, status=409)
-    TradeListing.objects.filter(beast=beast, is_open=True).update(is_open=False)
+    in_offer = TradeOffer.objects.filter(status="pending").filter(Q(offered_beast=beast) | Q(offered_beasts=beast) | Q(listing__beast=beast)).exists()
+    if in_offer or TradeListing.objects.filter(beast=beast, is_open=True).exists():
+        return JsonResponse({"error": "Unlist this beast or withdraw its pending trade offer before releasing it."}, status=409)
+    LadderTeam.objects.filter(user=node.user).update(fighters=[])
     w = _wallet(node.user)
     kept = [i for i in (w.team_ids or []) if str(i) != str(beast.id)]
     if kept != (w.team_ids or []):
@@ -960,6 +1037,29 @@ def shop_buy(request):
         else:
             request.session["shop_err"] = payload.get("error", "Purchase failed.")
     return redirect("shop")
+
+
+@require_GET
+def api_account(request):
+    """Private linked-account summary. Available to free and paid devices."""
+    node = Node.objects.select_related("user").filter(token=request.headers.get("X-WB-Node-Token", "")).first()
+    if not node:
+        return JsonResponse({"error": "bad node token"}, status=403)
+    user = node.user
+    # Existing Clerk accounts only cached a name. Backfill missing email without requiring a new login.
+    if not user.email and user.username.startswith("user_") and cache.add(f"profile-backfill:{user.pk}", True, 300):
+        clerkauth.sync_profile(user)
+    w = _wallet(user)
+    response = JsonResponse({"ok": True, "account": {
+        "name": user.first_name or user.username, "email": user.email or None,
+        "plan": "Premium" if w.subscribed else "Free", "subscribed": w.subscribed,
+        "subscription_status": w.subscription_status or ("active" if w.subscribed else "free"),
+        "shards": w.shards, "cores": w.cores,
+        "beasts": user.beasts.filter(status="owned").count(), "nodes": user.nodes.count(),
+        "node_limit": PAID_NODE_LIMIT if w.subscribed else FREE_NODE_LIMIT,
+    }, "node": {"name": node.name, "kind": node.kind, "next_snapshot_in": node.seconds_until_ready()}})
+    response["Cache-Control"] = "private, no-store"
+    return response
 
 
 @csrf_exempt
@@ -1096,12 +1196,15 @@ def _buddy_auth(request):
 
 
 @csrf_exempt
+@require_GET
+@transaction.atomic
 def api_buddy(request):
     """GET the current buddy + any away-events accrued since the last poll (server-rolled, rate-limited)."""
     node, err = _buddy_auth(request)
     if err:
         return err
-    b, _ = Buddy.objects.get_or_create(user=node.user)
+    Wallet.objects.select_for_update().get(user=node.user)
+    b, _ = Buddy.objects.select_for_update().get_or_create(user=node.user)
     w = _wallet(node.user)
     buddymod.refresh(b)
     events = buddymod.accrue_events(b, w, b.beast) if b.beast_id else []
@@ -1114,8 +1217,10 @@ def api_buddy(request):
 
 
 @csrf_exempt
+@require_POST
+@transaction.atomic
 def api_buddy_slot(request):
-    """Slot a verified owned beast as the account's one buddy."""
+    """Slot an owned beast as the account's one buddy, or clear its slot."""
     node, err = _buddy_auth(request)
     if err:
         return err
@@ -1123,12 +1228,20 @@ def api_buddy_slot(request):
         data = json.loads(request.body.decode("utf-8"))
     except Exception:
         return JsonResponse({"error": "bad json"}, status=400)
+    Wallet.objects.select_for_update().get(user=node.user)
+    if "beast_id" in data and data["beast_id"] is None:
+        b, _ = Buddy.objects.select_for_update().get_or_create(user=node.user)
+        b.beast = None
+        b.carrier = None
+        b.last_event_at = None
+        b.save()
+        return JsonResponse({"ok": True, "buddy": buddymod.state(b)})
     # Any owned beast can be a buddy - it's a personal companion (not traded or laddered), and away-events
     # don't scale with its stats, so there's no anti-cheat reason to require a verified beast here.
     beast = OwnedBeast.objects.filter(id=data.get("beast_id"), user=node.user, status="owned").first()
     if not beast:
         return JsonResponse({"error": "no such owned beast"}, status=404)
-    b, _ = Buddy.objects.get_or_create(user=node.user)
+    b, _ = Buddy.objects.select_for_update().get_or_create(user=node.user)
     b.beast = beast
     b.carrier = node  # this device is now carrying the buddy
     b.slotted_at = timezone.now()
@@ -1138,12 +1251,15 @@ def api_buddy_slot(request):
 
 
 @csrf_exempt
+@require_POST
+@transaction.atomic
 def api_buddy_care(request):
     """Apply a care action (feed/play/rest/clean/train) to the slotted buddy."""
     node, err = _buddy_auth(request)
     if err:
         return err
-    b, _ = Buddy.objects.get_or_create(user=node.user)
+    Wallet.objects.select_for_update().get(user=node.user)
+    b, _ = Buddy.objects.select_for_update().get_or_create(user=node.user)
     if not b.beast_id:
         return JsonResponse({"error": "no buddy slotted"}, status=409)
     b.carrier = node  # caring for it from this device -> it's the carrier
@@ -1193,7 +1309,7 @@ def _healthy_party_beasts(user):
     roster means no scan-battles until something heals."""
     ids = _wallet(user).team_ids or []
     if ids:
-        byid = {b.id: b for b in OwnedBeast.objects.filter(user=user, id__in=ids)}
+        byid = {b.id: b for b in OwnedBeast.objects.filter(user=user, status="owned", verified=True, id__in=ids)}
         beasts = [byid[i] for i in ids if i in byid]
     else:
         beasts = list(OwnedBeast.objects.filter(user=user, status="owned", verified=True).order_by("-level")[:6])

@@ -1,0 +1,32 @@
+<p class="lead">A listener sends real sensor snapshots to your online account. It needs Python 3, internet access and a node code—not the Go engine.</p>
+<p><a class="btn" href="/docs/ai-setup/#node-prompt">Set this up with an AI agent ↗</a></p>
+<h2 id="nodes">Limits and cadence</h2><ul><li>Free: <b>3 devices</b>. Premium: <b>12 devices</b>.</li><li>Normal cadence: <b>300 seconds</b> per node. Premium boosts cost <b>1 core</b> for <b>10 minutes</b> at <b>100 seconds</b> per snapshot.</li><li>Use <code>next_snapshot_in</code> from accepted responses, or <code>retry_after</code> after HTTP 429. Give each device its own code.</li></ul>
+<h2 id="cli">1. Create a node</h2><p>Sign in and open <a href="/nodes/">Nodes</a>. Create a named device and save its code privately. In the standalone app, paste it into <b>World → Link account</b>; your name, email, plan and device details confirm the account.</p>
+<h2>2. Run one listener cycle</h2><p>Store <code>WB_NODE_TOKEN</code> in your environment or a private local environment file first. Do not paste it into public scripts or logs.</p>
+<pre><code>curl -fsSL {{ site_url }}/download/wavebeast-node.py -o wavebeast-node.py
+# WB_NODE_TOKEN is already set privately in this shell.
+WB_SITE={{ site_url }} WB_ONCE=1 python3 wavebeast-node.py</code></pre>
+<p>The listener reads Wi-Fi via <code>nmcli</code> where available. Other operating systems may need a sensor adapter. Verify that the log reports real signals and a successful result; a zero exit code alone does not prove the server accepted it.</p>
+<h2>3. Keep it running</h2><pre><code>WB_SITE={{ site_url }} python3 -u wavebeast-node.py</code></pre><p>For background operation, use a per-user service. Example Linux unit at <code>~/.config/systemd/user/wavebeast-node.service</code>, assuming the script is at <code>~/.local/share/wavebeast-node/wavebeast-node.py</code>:</p>
+<pre><code>[Unit]
+Description=WaveBeasts listener
+After=network-online.target
+
+[Service]
+EnvironmentFile=%h/.config/wavebeast-node/node.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 %h/.local/share/wavebeast-node/wavebeast-node.py
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=default.target</code></pre>
+<p>The environment file contains <code>WB_SITE={{ site_url }}</code> and your <code>WB_NODE_TOKEN</code>; restrict it to your user with mode 600. Confirm the Python path on your machine.</p>
+<pre><code>systemctl --user daemon-reload
+systemctl --user enable --now wavebeast-node
+systemctl --user status wavebeast-node
+journalctl --user -u wavebeast-node -n 20 --no-pager
+# Stop and disable:
+systemctl --user disable --now wavebeast-node</code></pre>
+<p>User services may stop at logout unless lingering is configured. macOS uses launchd and Windows uses Task Scheduler; the <a href="/docs/ai-setup/">AI setup prompt</a> handles those differences.</p>
+<h2>Troubleshooting</h2><table><tr><th>Result</th><th>Meaning / action</th></tr><tr><td>200 / accepted</td><td>Success. A beast, resources or nothing are all valid outcomes.</td></tr><tr><td>403</td><td>Invalid/revoked code. Generate a current code and relink.</td></tr><tr><td>429</td><td>Wait for retry_after; do not increase submission speed.</td></tr><tr><td>Zero signals</td><td>Check nmcli/sensor permissions or add a real adapter.</td></tr><tr><td>Connection failure</td><td>Check internet access and WB_SITE. The listener retries at its fallback interval.</td></tr></table>

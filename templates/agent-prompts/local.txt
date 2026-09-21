@@ -1,0 +1,22 @@
+Install the complete WaveBeast engine and browser GUI for LOCAL play on this machine. This is not the thin Python listener. No account or subscription is needed.
+
+Official guide: {{ site_url }}/docs/local-play/
+Public downloads: https://github.com/chvolk/wavebeast-dl/releases/latest
+Asset URL prefix: https://github.com/chvolk/wavebeast-dl/releases/latest/download/
+
+1. Inspect OS and CPU architecture and check for an existing engine/database on port 8777. Reuse a working setup and preserve existing data. Select the matching release asset:
+   Linux x86_64: wavebeast-linux-amd64
+   Linux aarch64/arm64: wavebeast-linux-arm64
+   Linux armv7: wavebeast-linux-armv7
+   macOS Intel: wavebeast-macos-amd64
+   macOS Apple Silicon: wavebeast-macos-arm64
+   Windows x64: wavebeast-windows-amd64.exe
+   Do not guess for an unsupported OS/architecture. The source is private; use public binaries, not a source clone or an APK on a desktop OS.
+2. Download the binary over HTTPS into a durable user-owned application directory, using a temporary filename until the download completes. If the release API provides an asset SHA-256 digest, verify it. Make it executable on Unix. Do not disable OS security checks globally; explain any platform-specific launch prompt.
+3. Choose a durable, writable SQLite path in the user's application-data directory. Start the engine with -addr 127.0.0.1:8777 -db ABSOLUTE_DATABASE_PATH (quote paths correctly for this shell). The same settings can use WAVEBEAST_ADDR and WAVEBEAST_DB. Do not bind to all interfaces, expose it on the public internet, overwrite a collection, or use a temporary database.
+4. Verify GET http://127.0.0.1:8777/capabilities returns JSON with engine=wavebeast. Load http://127.0.0.1:8777/ and check the GUI, styles, shop and collection. If port 8777 is already in use, identify its owner; do not kill unrelated processes. Use a different loopback port if needed and report the actual URL.
+5. Demonstrate a real manual scan with a code I choose or genuine available sensors. Outcomes can be a beast, resources, or nothing. Respect the roughly 300-second yield cooldown; do not treat a non-beast outcome as failure. Explain that local collection and wallet are on this device and separate from the online account.
+6. Restart using the same database path and confirm the collection/inventory persists. If automatic startup is desired, add a per-user systemd service, launchd job, or Windows scheduled task with absolute paths; verify its logs and avoid duplicate engines.
+7. Optional account linking: use World > Link account and a node code from {{ site_url }}/nodes/. The World tab validates the code and displays account identity. Linking is optional. Submitted account scans are server-rolled; Premium imports of existing local beasts remain unverified and cannot trade or enter the ladder.
+8. Optional shell-backed sensors require WAVEBEAST_ALLOW_EXEC=1. Only enable this if I specifically want trusted local command adapters; leave it off otherwise. Read /capabilities for the supported signal contract and use actual sensor values, not random numbers.
+9. Report the installed asset/version, application and database paths, GUI URL, successful API/UI checks, and any unavailable sensors. Include exact start/stop/status/update instructions. Back up the SQLite database safely while the engine is stopped before replacing binaries; keep data separate from the executable. Uninstall must preserve my collection unless I explicitly request its deletion.

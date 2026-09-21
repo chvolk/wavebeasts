@@ -1,0 +1,10 @@
+<p class="lead">Open your coding agent on the computer you want to use, then give it one of these prompts. The agent should inspect that machine, install the correct public build, and verify the result.</p>
+<div class="wiki-cards"><a href="#node-prompt"><h2>Account-linked node</h2><p>A tiny Python listener submits real sensors to your online account. Requires a node code and internet.</p></a><a href="#local-prompt"><h2>Local engine + GUI</h2><p>The complete game runs on your computer, with a local collection and browser interface. No code or account required.</p></a></div>
+<p>Create a node code on <a href="/nodes/">Nodes</a> only for the first option. Put it in a private environment file on that machine; do not paste it into the prompt.</p>
+<h2 id="node-prompt">Set up an account-linked listener</h2>
+<div class="prompt-actions"><button class="btn" type="button" data-copy="agent-node">Copy node prompt</button><a class="btn sec" href="/docs/ai-setup/node.txt" download>Download .txt</a><span class="copy-status" role="status"></span></div>
+<pre><code id="agent-node">{{ node_prompt }}</code></pre>
+<h2 id="local-prompt">Set up local play and the GUI</h2>
+<div class="prompt-actions"><button class="btn" type="button" data-copy="agent-local">Copy local-play prompt</button><a class="btn sec" href="/docs/ai-setup/local.txt" download>Download .txt</a><span class="copy-status" role="status"></span></div>
+<pre><code id="agent-local">{{ local_prompt }}</code></pre>
+<h2>What a successful setup looks like</h2><p>A listener has sent an accepted snapshot with real sensor readings and honors the server’s next allowed time. Local play opens a working GUI at <code>http://127.0.0.1:8777</code>, keeps its database in a durable directory, and survives a restart without losing the collection.</p>

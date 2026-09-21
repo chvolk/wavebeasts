@@ -1,0 +1,19 @@
+    <h2 id="battle">Battle mechanics</h2>
+    <p>Battles are <b>3-v-3 auto-battles</b> and are fully deterministic from a seed.
+    Your team is up to three fighters; in a local scan your "party" is your three highest-level beasts.</p>
+    <ul>
+      <li><b>Turn order:</b> the higher <b>SPD</b> fighter acts first each round (ties favour the challenger's
+      side). Up to 300 turns.</li>
+      <li><b>Move:</b> a random damaging move; a beast with none uses <b>Struggle</b> (power 35).</li>
+      <li><b>Damage:</b>
+        <code>((2×level/5 + 2) × power × ATK / DEF) / 50 + 2</code>, then modifiers below.
+        Physical moves use ATK vs DEF; special moves use SP vs RES.</li>
+      <li><b>STAB ×1.5</b> when the move's type matches the attacker's type.</li>
+      <li><b>× type effectiveness</b> (see the <a href="/docs/type-chart/#chart">type chart</a>).</li>
+      <li><b>Crit:</b> 6.25% chance for <b>×1.5</b> damage.</li>
+      <li><b>Spread:</b> every hit rolls ×0.85-1.00. Minimum damage is 1.</li>
+    </ul>
+    <p>A side wins when the other is wiped; at the turn cap the win goes to whoever has more total HP remaining
+    (equal -> draw). <b>Battle on scan:</b> once you have a party, a wild encounter has a <b>35% chance</b> to
+    challenge you - win and it's weakened and catchable; lose and it flees.</p>
+

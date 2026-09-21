@@ -10,29 +10,37 @@ import requests
 from django.conf import settings
 
 
-def friendly_name(sub):
-    """Fetch a display name for a Clerk user id via the Backend API (needs CLERK_SECRET_KEY). Returns a
-    nice label (name / username / email local-part) or "" on any failure - never raises."""
+def account_profile(sub):
+    """Read the primary email and display name from Clerk's authenticated backend API."""
     key = getattr(settings, "CLERK_SECRET_KEY", "")
     if not key or not sub:
-        return ""
+        return None
     try:
         r = requests.get(f"https://api.clerk.com/v1/users/{sub}",
                          headers={"Authorization": f"Bearer {key}"}, timeout=6)
-        if r.status_code != 200:
-            return ""
+        r.raise_for_status()
         u = r.json()
-        name = " ".join(x for x in [u.get("first_name"), u.get("last_name")] if x).strip()
-        if name:
-            return name[:40]
-        if u.get("username"):
-            return str(u["username"])[:40]
         emails = u.get("email_addresses") or []
-        if emails and emails[0].get("email_address"):
-            return emails[0]["email_address"].split("@")[0][:40]
-    except Exception:
-        pass
-    return ""
+        primary = next((e for e in emails if e.get("id") == u.get("primary_email_address_id")), {})
+        email = primary.get("email_address", "")
+        name = " ".join(x for x in [u.get("first_name"), u.get("last_name")] if x).strip()
+        name = name or u.get("username") or email.split("@")[0]
+        return {"name": str(name or "")[:40], "email": str(email or "")[:254]}
+    except (requests.RequestException, ValueError, TypeError):
+        return None
+
+
+def sync_profile(user):
+    profile = account_profile(user.username)
+    if profile is not None:
+        user.first_name = profile["name"]
+        user.email = profile["email"]
+        user.save(update_fields=["first_name", "email"])
+    return profile
+
+
+def friendly_name(sub):
+    return (account_profile(sub) or {}).get("name", "")
 
 _jwks_client = None
 

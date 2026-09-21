@@ -136,6 +136,11 @@ def auth_clerk(request):
         user.save()
         Wallet.objects.get_or_create(user=user)
         InventoryItem.objects.get_or_create(user=user, item_id="spark_drive", defaults={"qty": 3})
+    if created or not user.first_name:  # cache a friendly display name from Clerk (best-effort)
+        name = clerkauth.friendly_name(claims["sub"])
+        if name:
+            user.first_name = name
+            user.save(update_fields=["first_name"])
     login(request, user)
     return JsonResponse({"ok": True, "redirect": "/me/" if _wallet(user).onboarded else "/onboarding/"})
 
@@ -970,7 +975,7 @@ def api_beasts(request):
     inv = {i.item_id: i.qty for i in node.user.items.filter(qty__gt=0)}
     buddy = getattr(node.user, "buddy", None)
     w = _wallet(node.user)
-    return JsonResponse({"ok": True, "account": node.user.username, "node": node.name,
+    return JsonResponse({"ok": True, "account": node.user.first_name or node.user.username, "node": node.name,
                          "beasts": out, "wild": wild, "inventory": inv,
                          "buddy_beast_id": getattr(buddy, "beast_id", None),
                          "subscribed": w.subscribed, "shards": w.shards, "cores": w.cores})

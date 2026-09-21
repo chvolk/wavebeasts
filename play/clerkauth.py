@@ -6,7 +6,33 @@ import base64
 import time
 
 import jwt
+import requests
 from django.conf import settings
+
+
+def friendly_name(sub):
+    """Fetch a display name for a Clerk user id via the Backend API (needs CLERK_SECRET_KEY). Returns a
+    nice label (name / username / email local-part) or "" on any failure - never raises."""
+    key = getattr(settings, "CLERK_SECRET_KEY", "")
+    if not key or not sub:
+        return ""
+    try:
+        r = requests.get(f"https://api.clerk.com/v1/users/{sub}",
+                         headers={"Authorization": f"Bearer {key}"}, timeout=6)
+        if r.status_code != 200:
+            return ""
+        u = r.json()
+        name = " ".join(x for x in [u.get("first_name"), u.get("last_name")] if x).strip()
+        if name:
+            return name[:40]
+        if u.get("username"):
+            return str(u["username"])[:40]
+        emails = u.get("email_addresses") or []
+        if emails and emails[0].get("email_address"):
+            return emails[0]["email_address"].split("@")[0][:40]
+    except Exception:
+        pass
+    return ""
 
 _jwks_client = None
 

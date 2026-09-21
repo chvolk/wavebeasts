@@ -2,7 +2,6 @@
 the app compares its installed versionCode against this and prompts to update. Keep VERSION_CODE in sync
 with android/app/build.gradle's versionCode in the wavebeast repo."""
 
-VERSION_CODE = 11
-VERSION_NAME = "0.11.0"
-NOTES = ("Clearer account errors (it now tells you when upload needs Premium or a re-link) and a one-tap "
-         "Switch account button.")
+VERSION_CODE = 12
+VERSION_NAME = "0.11.1"
+NOTES = "The Spark Drive is now stocked in the shop for 15 shards."

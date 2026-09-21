@@ -378,6 +378,19 @@ class CatchTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.json()["remaining"], 0)  # drive consumed regardless of outcome
 
+    @patch("play.resolver.generate")
+    def test_snapshot_returns_verified_beast(self, mgen):
+        mgen.return_value = {"outcome": "beast", "entropy": 0.5,
+            "species": {"species_id": "sp1", "name": "Zap", "types": ["spark"]},
+            "individual": {"rarity": "rare", "level": 1, "nature": "Bold"}}
+        r = self.client.post("/api/snapshot", data="{}", content_type="application/json",
+                             HTTP_X_WB_NODE_TOKEN=self.node.token)
+        self.assertEqual(r.status_code, 200)
+        d = r.json()
+        self.assertTrue(d["accepted"] and d["verified"] and d["caught"])  # first catch is free + verified
+        self.assertIn("/sprite/", d["sprite_url"])
+        self.assertTrue(OwnedBeast.objects.get(user=self.user, species_id="sp1").verified)
+
 
 @override_settings(ALLOWED_HOSTS=["testserver"])
 class TradeTests(TestCase):

@@ -683,16 +683,24 @@ def api_snapshot(request):
     node.last_snapshot_at = timezone.now()
     node.save(update_fields=["last_snapshot_at"])
     outcome = res.get("outcome")
+    extra = {}
     if outcome == "resource":
         _apply_resource(node.user, res)
         detail = res.get("reward_label", "")
+        extra["reward_label"] = detail
     elif outcome == "beast":
-        detail = _apply_beast(node, res)
+        bres = _apply_beast(node, res)
+        detail = bres["detail"]
+        # surface the server-rolled (verified) beast so a client can reveal it
+        extra.update({k: bres.get(k) for k in ("beast", "caught", "fled", "battled", "free")})
+        extra["verified"] = True
+        if bres.get("beast"):
+            extra["sprite_url"] = request.build_absolute_uri(f"/sprite/{bres['beast']['id']}.png")
     else:
         detail = res.get("message", "")
     Snapshot.objects.create(node=node, outcome=outcome or "nothing", entropy=res.get("entropy", 0), detail=detail[:200])
     return JsonResponse({"accepted": True, "outcome": outcome, "detail": detail,
-                         "entropy": res.get("entropy", 0), "next_snapshot_in": node.min_interval()})
+                         "entropy": res.get("entropy", 0), "next_snapshot_in": node.min_interval(), **extra})
 
 
 @csrf_exempt
@@ -1072,28 +1080,35 @@ def _scan_party(user):
 
 
 def _create_beast(node, sp, ind, status):
-    OwnedBeast.objects.create(
+    return OwnedBeast.objects.create(
         user=node.user, node=node, species_id=sp.get("species_id", ""), id_version=sp.get("id_version", 1),
         name=sp.get("name", "?"), rarity=ind.get("rarity", "common"), shiny=bool(ind.get("shiny")),
         level=ind.get("level", 1), status=status, verified=True, species_json=sp, individual_json=ind)
 
 
 def _apply_beast(node, res):
+    """Create the server-rolled (verified) beast on the account. Returns a dict the snapshot response
+    surfaces so a client can reveal it: {detail, beast, caught, fled, battled}."""
     user = node.user
     sp, ind = res.get("species", {}), res.get("individual", {})
     if OwnedBeast.objects.filter(user=user, status="owned").count() == 0:
-        _create_beast(node, sp, ind, "owned")  # first catch is free
-        return f"caught (free) {sp.get('name')} [{ind.get('rarity')}]"
+        b = _create_beast(node, sp, ind, "owned")  # first catch is free
+        return {"detail": f"caught (free) {sp.get('name')} [{ind.get('rarity')}]",
+                "beast": _beast_row(b), "caught": True, "free": True, "fled": False, "battled": False}
     # You have a party - a wild sometimes challenges you to a battle first.
     party = _scan_party(user)
-    if party and random.random() < 0.35:
+    battled = bool(party) and random.random() < 0.35
+    if battled:
         try:
             won = resolver.battle_auto(party, [{"species": sp, "individual": ind}]).get("winner") == "a"
         except Exception:
             won = True  # don't punish the player if the resolver hiccups
         if not won:
-            return f"{sp.get('name')} bested your team and fled"
-        _create_beast(node, sp, ind, "wild")
-        return f"battled & beat {sp.get('name')} [{ind.get('rarity')}] - catch it with a drive"
-    _create_beast(node, sp, ind, "wild")
-    return f"sighted {sp.get('name')} [{ind.get('rarity')}]"
+            return {"detail": f"{sp.get('name')} bested your team and fled",
+                    "beast": None, "caught": False, "fled": True, "battled": True}
+        b = _create_beast(node, sp, ind, "wild")
+        return {"detail": f"battled & beat {sp.get('name')} [{ind.get('rarity')}] - catch it with a drive",
+                "beast": _beast_row(b), "caught": False, "fled": False, "battled": True}
+    b = _create_beast(node, sp, ind, "wild")
+    return {"detail": f"sighted {sp.get('name')} [{ind.get('rarity')}]",
+            "beast": _beast_row(b), "caught": False, "fled": False, "battled": False}

@@ -253,20 +253,48 @@ def sprite(request, beast_id):
 
 @login_required
 def nodes(request):
-    return render(request, "nodes.html", {"nodes": list(request.user.nodes.all()), "nav": "nodes"})
+    new_id = request.session.pop("new_token_id", None)
+    new_node = request.user.nodes.filter(id=new_id).first() if new_id else None
+    return render(request, "nodes.html", {
+        "nodes": list(request.user.nodes.all()),
+        "nodes_msg": request.session.pop("nodes_msg", ""),
+        "new_node": new_node, "nav": "nodes"})
+
+
+def _node_limit_reached(user):
+    """Return a limit message if the user is at their node cap, else None."""
+    limit = PAID_NODE_LIMIT if _paid(user) else FREE_NODE_LIMIT
+    if user.nodes.count() >= limit:
+        return (f"Node limit reached ({limit}). Upgrade for up to {PAID_NODE_LIMIT} nodes."
+                if not _paid(user) else f"Node limit reached ({PAID_NODE_LIMIT}).")
+    return None
 
 
 @login_required
 def node_create(request):
     if request.method == "POST":
         name = (request.POST.get("name") or "").strip()[:256]
-        limit = PAID_NODE_LIMIT if _paid(request.user) else FREE_NODE_LIMIT
-        if request.user.nodes.count() >= limit:
-            request.session["nodes_msg"] = (
-                f"Node limit reached ({limit}). Upgrade for up to {PAID_NODE_LIMIT} nodes."
-                if not _paid(request.user) else f"Node limit reached ({PAID_NODE_LIMIT}).")
+        msg = _node_limit_reached(request.user)
+        if msg:
+            request.session["nodes_msg"] = msg
         elif name:
-            Node.objects.create(user=request.user, name=name)
+            node = Node.objects.create(user=request.user, name=name)
+            request.session["new_token_id"] = node.id
+    return redirect("nodes")
+
+
+@login_required
+def node_app_token(request):
+    """One-click token for the mobile app (Omnitool etc.): makes an 'app' node and surfaces its token
+    to paste into the app's WORLD tab."""
+    if request.method == "POST":
+        msg = _node_limit_reached(request.user)
+        if msg:
+            request.session["nodes_msg"] = msg
+        else:
+            name = (request.POST.get("name") or "").strip()[:256] or "My phone (app)"
+            node = Node.objects.create(user=request.user, name=name, kind="app")
+            request.session["new_token_id"] = node.id
     return redirect("nodes")
 
 

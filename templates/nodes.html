@@ -4,12 +4,40 @@
 <h1 style="margin:0 0 4px">Listener nodes</h1>
 <p class="muted" style="margin:0 0 18px">Each node feeds rate-limited sensor snapshots to your account. Boost a node with cores to raise its cadence.</p>
 
+{% if nodes_msg %}<div class="card" style="border-color:var(--red);color:var(--red);padding:10px 14px;margin:0 0 12px">{{ nodes_msg }}</div>{% endif %}
+
+{% if new_node %}
+<div class="card" style="border-color:var(--acc);margin:0 0 14px">
+  <b style="color:var(--acc)">{% if new_node.kind == 'app' %}App token ready{% else %}Node token ready{% endif %} ✓</b>
+  <p class="muted" style="margin:6px 0 8px">
+    {% if new_node.kind == 'app' %}Open the WaveBeast app → <b>WORLD</b> tab and paste this token to link this
+    device to your account.{% else %}Paste this into your node so it can post snapshots.{% endif %}
+  </p>
+  <div class="stack" style="gap:8px;align-items:center">
+    <code id="newtok" style="flex:1;min-width:180px;font-size:15px;padding:8px 10px">{{ new_node.token }}</code>
+    <button class="btn sm" type="button" onclick="wbCopy('{{ new_node.token }}', this)">Copy</button>
+  </div>
+</div>
+{% endif %}
+
 <div class="card">
-  <form method="post" action="/nodes/new" class="stack">{% csrf_token %}
-    <div class="grow"><label>Node name</label>
-      <input name="name" maxlength="256" placeholder="name it anything — the kitchen Pi, my phone, backyard sensor…" required></div>
-    <div style="align-self:flex-end"><button class="btn" type="submit">Add node</button></div>
-  </form>
+  <div class="stack" style="align-items:flex-end;gap:12px">
+    <form method="post" action="/nodes/new" class="stack grow" style="gap:10px">{% csrf_token %}
+      <div class="grow"><label>Node name</label>
+        <input name="name" maxlength="256" placeholder="name it anything — the kitchen Pi, my phone, backyard sensor…" required></div>
+      <div style="align-self:flex-end"><button class="btn" type="submit">Add node</button></div>
+    </form>
+  </div>
+  <div style="border-top:1px solid var(--line);margin:14px 0 12px"></div>
+  <div class="stack" style="align-items:center;gap:12px">
+    <div class="grow">
+      <b>Using the app?</b>
+      <p class="muted" style="margin:4px 0 0;font-size:13px">Generate a token for the WaveBeast mobile app, then paste it into the app's WORLD tab.</p>
+    </div>
+    <form method="post" action="/nodes/app-token" style="margin:0">{% csrf_token %}
+      <button class="btn" type="submit">Generate app token</button>
+    </form>
+  </div>
 </div>
 
 {% if nodes %}
@@ -19,8 +47,8 @@
   <tr><th>Name</th><th>Token</th><th>Next snapshot</th><th></th></tr>
   {% for n in nodes %}
   <tr>
-    <td style="max-width:280px;word-break:break-word">{{ n.name }}</td>
-    <td><code>{{ n.token }}</code></td>
+    <td style="max-width:280px;word-break:break-word">{{ n.name }}{% if n.kind == 'app' %} <span class="dim" style="font-size:11px">· app</span>{% endif %}</td>
+    <td><code>{{ n.token }}</code> <button class="btn sec sm" type="button" style="padding:3px 8px;font-size:11px" onclick="wbCopy('{{ n.token }}', this)">Copy</button></td>
     <td>{% if n.seconds_until_ready %}<span class="muted">{{ n.seconds_until_ready }}s</span>{% else %}<span style="color:var(--gold)">ready</span>{% endif %}
         {% if n.boosted_until %}<span class="dim">· boosted</span>{% endif %}</td>
     <td style="text-align:right;white-space:nowrap">
@@ -46,4 +74,13 @@
         {"kind":"scalar","strength":0.6,"value":{"metric":"lux","n":300}} ]}'</pre>
   <p class="dim" style="margin-bottom:0">Or run the standalone WaveBeast app / the <code>wavebeast-node</code> script and paste the token.</p>
 </div>
+
+<script>
+  function wbCopy(text, btn){
+    var done=function(){ var o=btn.textContent; btn.textContent='Copied ✓'; setTimeout(function(){ btn.textContent=o; }, 1400); };
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done, function(){ wbFallbackCopy(text); done(); }); }
+    else { wbFallbackCopy(text); done(); }
+  }
+  function wbFallbackCopy(text){ try{ var t=document.createElement('textarea'); t.value=text; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); }catch(e){} }
+</script>
 {% endblock %}

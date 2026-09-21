@@ -211,6 +211,18 @@ class TieringTests(TestCase):
             self.client.post("/nodes/new", {"name": f"rig{i}"})
         self.assertEqual(self.user.nodes.count(), 12)
 
+    def test_app_token_button_creates_app_node_and_shows_token(self):
+        r = self.client.post("/nodes/app-token", follow=True)
+        self.assertEqual(r.status_code, 200)
+        n = self.user.nodes.filter(kind="app").first()
+        self.assertIsNotNone(n)
+        self.assertContains(r, n.token)  # surfaced for copy after redirect
+
+    def test_app_token_respects_node_cap(self):
+        Node.objects.create(user=self.user, name="rig1")  # free cap = 1
+        self.client.post("/nodes/app-token")
+        self.assertEqual(self.user.nodes.count(), 1)  # blocked, none added
+
     def test_battle_and_ladder_require_paid(self):
         _beast(self.user)
         self.client.post("/battle/fight")

@@ -24,6 +24,7 @@ urlpatterns = [
 
     path("nodes/", views.nodes, name="nodes"),
     path("nodes/new", views.node_create, name="node_create"),
+    path("nodes/app-token", views.node_app_token, name="node_app_token"),
     path("nodes/<int:node_id>/boost", views.node_boost, name="node_boost"),
     path("nodes/<int:node_id>/delete", views.node_delete, name="node_delete"),
 

@@ -732,13 +732,38 @@ def _apply_resource(user, res):
         item.save()
 
 
+def _scan_party(user):
+    """Your battle party for wild encounters: your set team if any, else your 3 highest verified beasts."""
+    team = _team_for(user)
+    if team:
+        return team
+    beasts = OwnedBeast.objects.filter(user=user, status="owned", verified=True).order_by("-level")[:3]
+    return [_fighter(b) for b in beasts]
+
+
+def _create_beast(node, sp, ind, status):
+    OwnedBeast.objects.create(
+        user=node.user, node=node, species_id=sp.get("species_id", ""), id_version=sp.get("id_version", 1),
+        name=sp.get("name", "?"), rarity=ind.get("rarity", "common"), shiny=bool(ind.get("shiny")),
+        level=ind.get("level", 1), status=status, verified=True, species_json=sp, individual_json=ind)
+
+
 def _apply_beast(node, res):
     user = node.user
     sp, ind = res.get("species", {}), res.get("individual", {})
-    owned = OwnedBeast.objects.filter(user=user, status="owned").count()
-    status = "owned" if owned == 0 else "wild"
-    OwnedBeast.objects.create(
-        user=user, node=node, species_id=sp.get("species_id", ""), id_version=sp.get("id_version", 1),
-        name=sp.get("name", "?"), rarity=ind.get("rarity", "common"), shiny=bool(ind.get("shiny")),
-        level=ind.get("level", 1), status=status, verified=True, species_json=sp, individual_json=ind)
-    return f"{'caught (free)' if status == 'owned' else 'sighted'} {sp.get('name')} [{ind.get('rarity')}]"
+    if OwnedBeast.objects.filter(user=user, status="owned").count() == 0:
+        _create_beast(node, sp, ind, "owned")  # first catch is free
+        return f"caught (free) {sp.get('name')} [{ind.get('rarity')}]"
+    # You have a party — a wild sometimes challenges you to a battle first.
+    party = _scan_party(user)
+    if party and random.random() < 0.35:
+        try:
+            won = resolver.battle_auto(party, [{"species": sp, "individual": ind}]).get("winner") == "a"
+        except Exception:
+            won = True  # don't punish the player if the resolver hiccups
+        if not won:
+            return f"{sp.get('name')} bested your team and fled"
+        _create_beast(node, sp, ind, "wild")
+        return f"battled & beat {sp.get('name')} [{ind.get('rarity')}] — catch it with a drive"
+    _create_beast(node, sp, ind, "wild")
+    return f"sighted {sp.get('name')} [{ind.get('rarity')}]"

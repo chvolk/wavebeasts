@@ -274,6 +274,8 @@ def beast_nickname(request, beast_id):
 def dashboard(request):
     _cull_wilds(request.user)  # hide expired/overflow sightings on the web too
     beasts = list(request.user.beasts.all())
+    for beast in beasts:
+        beast.display_hp = _hp_now(beast.individual_json or {})
     listed_ids = set(TradeListing.objects.filter(user=request.user, is_open=True).values_list("beast_id", flat=True))
     team = _wallet(request.user).team_ids or []
     return render(request, "beastiary.html", {

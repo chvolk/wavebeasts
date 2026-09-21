@@ -2,7 +2,7 @@
 {% block title %}Beastiary · WaveBeasts{% endblock %}
 {% block content %}
 <div class="stack" style="justify-content:space-between">
-  <h1 style="margin:0">Beastiary</h1>
+  <div><div class="eyebrow">Field archive / Your collection</div><h1 class="signal-title" style="margin:0">Beastiary</h1><p class="muted">Every signal has a creature waiting inside.</p></div>
   <div class="stack">
     {% for it in items %}<span class="chip">{{ it.item_id }} <b>{{ it.qty }}</b></span>{% endfor %}
   </div>
@@ -19,6 +19,11 @@
     <div class="nm">{{ b.individual_json.nickname|default:b.name }}</div>
     <div class="ty">{{ b.types_display }} · {{ b.tribe }}</div>
     <span class="tag rt-{{ b.rarity }}">{{ b.rarity }}</span>
+    <div class="health {% if b.display_hp <= 25 %}critical{% elif b.display_hp <= 50 %}low{% endif %}">
+      <div class="health-label"><b>HEALTH</b><span>{{ b.display_hp }} / 100</span></div>
+      <div class="health-track" role="progressbar" aria-label="{{ b.name }} health" aria-valuenow="{{ b.display_hp }}" aria-valuemin="0" aria-valuemax="100"><i class="health-fill" style="width:{{ b.display_hp }}%"></i></div>
+      {% if b.display_hp < 100 %}<div class="health-note">{% if b.display_hp == 0 %}Fainted · {% endif %}Rest restores 20 HP / hour.</div>{% endif %}
+    </div>
     {% if b.id in listed_ids %}<div class="dim" style="font-size:11px;margin-top:6px">listed for trade</div>{% endif %}
     <details style="margin-top:6px"><summary class="dim" style="font-size:11px;cursor:pointer">Rename</summary>
       <form method="post" action="/me/{{ b.id }}/nickname" class="stack" style="margin-top:4px;gap:4px">{% csrf_token %}

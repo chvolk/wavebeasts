@@ -155,12 +155,13 @@
   .beast:hover{animation:wbFlick .5s steps(2) 1}
   @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
+<link rel="stylesheet" href="{% static 'brand/signal.css' %}">
 </head>
 <body>
 {% block page %}
 {% block nav %}
 <nav class="top">
-  <a href="{% if user.is_authenticated %}/me/{% else %}/{% endif %}" class="brand wordmark">WAVEBEASTS</a>
+  <a href="{% if user.is_authenticated %}/me/{% else %}/{% endif %}" class="brand wordmark"><img class="brand-icon" src="{% static 'brand/mark.svg' %}" alt="">WAVEBEASTS</a>
   {% if user.is_authenticated %}
   <div class="links">
     <a href="/me/" class="{% if nav == 'beastiary' %}active{% endif %}">Beastiary</a>

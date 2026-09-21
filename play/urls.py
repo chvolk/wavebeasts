@@ -33,6 +33,7 @@ urlpatterns = [
     path("trade/<int:listing_id>/offer", views.trade_offer, name="trade_offer"),
     path("trade/offer/<int:offer_id>/accept", views.trade_accept, name="trade_accept"),
     path("trade/offer/<int:offer_id>/decline", views.trade_decline, name="trade_decline"),
+    path("trade/offer/<int:offer_id>/withdraw", views.trade_withdraw, name="trade_withdraw"),
 
     path("battle/", views.battle, name="battle"),
     path("battle/team", views.set_team, name="set_team"),

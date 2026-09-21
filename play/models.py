@@ -141,16 +141,30 @@ class TradeListing(models.Model):
 
 
 class TradeOffer(models.Model):
-    """Another player's offer of one of their beasts for a listing."""
+    """Another player's offer for a listing: up to 3 of their beasts PLUS a sweetener of shards/cores.
+    Offered currency is escrowed (deducted from the offerer's wallet) when the offer is made and refunded
+    if it's declined or withdrawn, so it can't be double-spent while the offer sits pending."""
     STATUS = [("pending", "pending"), ("accepted", "accepted"), ("declined", "declined")]
+    MAX_BEASTS = 3
     listing = models.ForeignKey(TradeListing, on_delete=models.CASCADE, related_name="offers")
     from_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="offers")
-    offered_beast = models.ForeignKey(OwnedBeast, on_delete=models.CASCADE, related_name="offered_in")
+    # legacy single-beast pointer kept nullable for old rows; new offers use offered_beasts (M2M, up to 3).
+    offered_beast = models.ForeignKey(OwnedBeast, null=True, blank=True, on_delete=models.CASCADE, related_name="offered_in")
+    offered_beasts = models.ManyToManyField(OwnedBeast, blank=True, related_name="offered_in_set")
+    offered_shards = models.IntegerField(default=0)
+    offered_cores = models.IntegerField(default=0)
     status = models.CharField(max_length=10, choices=STATUS, default="pending")
     created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-created"]
+
+    def beasts(self):
+        """All beasts in this offer (new M2M, falling back to the legacy single pointer)."""
+        rows = list(self.offered_beasts.all())
+        if not rows and self.offered_beast_id:
+            rows = [self.offered_beast]
+        return rows
 
 
 class LadderTeam(models.Model):

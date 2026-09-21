@@ -274,3 +274,69 @@ class CatchTests(TestCase):
         r = self._catch(w.id, "nova_drive")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.json()["remaining"], 0)  # drive consumed regardless of outcome
+
+
+@override_settings(ALLOWED_HOSTS=["testserver"])
+class TradeTests(TestCase):
+    def setUp(self):
+        from .models import TradeListing, TradeOffer
+        self.TradeListing, self.TradeOffer = TradeListing, TradeOffer
+        self.lister = User.objects.create_user("lister", password="x")
+        self.offerer = User.objects.create_user("offerer", password="x")
+        self.lw = Wallet.objects.get_or_create(user=self.lister, defaults={"subscribed": True})[0]
+        self.ow = Wallet.objects.get_or_create(user=self.offerer, defaults={"subscribed": True, "shards": 100, "cores": 10})[0]
+        self.prize = _beast(self.lister)  # the beast up for trade
+        self.listing = TradeListing.objects.create(user=self.lister, beast=self.prize)
+
+    def test_offer_multiple_beasts_plus_resources_escrows_and_accepts(self):
+        b1, b2, b3 = _beast(self.offerer), _beast(self.offerer), _beast(self.offerer)
+        self.client.force_login(self.offerer)
+        r = self.client.post(f"/trade/{self.listing.id}/offer",
+                             {"beast_id": [b1.id, b2.id, b3.id], "shards": 30, "cores": 4})
+        self.assertEqual(r.status_code, 302)
+        offer = self.TradeOffer.objects.get(from_user=self.offerer)
+        self.assertEqual(offer.offered_beasts.count(), 3)
+        self.ow.refresh_from_db()
+        self.assertEqual((self.ow.shards, self.ow.cores), (70, 6))  # escrowed
+        # lister accepts
+        self.client.force_login(self.lister)
+        r2 = self.client.post(f"/trade/offer/{offer.id}/accept")
+        self.assertEqual(r2.status_code, 302)
+        for b in (b1, b2, b3):
+            b.refresh_from_db(); self.assertEqual(b.user_id, self.lister.id)
+        self.prize.refresh_from_db(); self.assertEqual(self.prize.user_id, self.offerer.id)
+        self.lw.refresh_from_db()
+        self.assertEqual((self.lw.shards, self.lw.cores), (80, 4))  # got the escrowed resources (started 50/0)
+
+    def test_more_than_three_beasts_rejected(self):
+        bs = [_beast(self.offerer) for _ in range(4)]
+        self.client.force_login(self.offerer)
+        self.client.post(f"/trade/{self.listing.id}/offer", {"beast_id": [b.id for b in bs]})
+        self.assertFalse(self.TradeOffer.objects.filter(from_user=self.offerer).exists())
+
+    def test_overspending_resources_rejected(self):
+        self.client.force_login(self.offerer)
+        self.client.post(f"/trade/{self.listing.id}/offer", {"shards": 9999})
+        self.assertFalse(self.TradeOffer.objects.filter(from_user=self.offerer).exists())
+        self.ow.refresh_from_db()
+        self.assertEqual(self.ow.shards, 100)  # nothing escrowed
+
+    def test_withdraw_refunds_escrow(self):
+        self.client.force_login(self.offerer)
+        self.client.post(f"/trade/{self.listing.id}/offer", {"shards": 25})
+        offer = self.TradeOffer.objects.get(from_user=self.offerer)
+        self.ow.refresh_from_db(); self.assertEqual(self.ow.shards, 75)
+        self.client.post(f"/trade/offer/{offer.id}/withdraw")
+        offer.refresh_from_db(); self.assertEqual(offer.status, "declined")
+        self.ow.refresh_from_db(); self.assertEqual(self.ow.shards, 100)  # refunded
+
+    def test_decline_refunds_and_beast_frees(self):
+        b1 = _beast(self.offerer)
+        self.client.force_login(self.offerer)
+        self.client.post(f"/trade/{self.listing.id}/offer", {"beast_id": [b1.id], "cores": 3})
+        offer = self.TradeOffer.objects.get(from_user=self.offerer)
+        self.client.force_login(self.lister)
+        self.client.post(f"/trade/offer/{offer.id}/decline")
+        offer.refresh_from_db(); self.assertEqual(offer.status, "declined")
+        self.ow.refresh_from_db(); self.assertEqual(self.ow.cores, 10)  # refunded
+        b1.refresh_from_db(); self.assertEqual(b1.user_id, self.offerer.id)  # kept

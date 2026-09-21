@@ -287,12 +287,21 @@ def node_delete(request, node_id):
 def trade(request):
     my_listings = list(request.user.listings.filter(is_open=True).select_related("beast"))
     market = list(TradeListing.objects.filter(is_open=True).exclude(user=request.user).select_related("beast", "user"))
-    incoming = list(TradeOffer.objects.filter(listing__user=request.user, status="pending").select_related("listing__beast", "offered_beast", "from_user"))
+    incoming = list(TradeOffer.objects.filter(listing__user=request.user, status="pending")
+                    .select_related("listing__beast", "from_user").prefetch_related("offered_beasts"))
+    outgoing = list(TradeOffer.objects.filter(from_user=request.user, status="pending")
+                    .select_related("listing__beast", "listing__user").prefetch_related("offered_beasts"))
+    # beasts you can offer/list: owned, not currently listed and not tied up in a pending offer of yours.
+    tied = set(TradeOffer.objects.filter(from_user=request.user, status="pending")
+               .values_list("offered_beasts__id", flat=True))
+    listed_ids = set(TradeListing.objects.filter(beast__user=request.user, is_open=True).values_list("beast_id", flat=True))
     tradeable = [b for b in request.user.beasts.filter(status="owned")
-                 if not TradeListing.objects.filter(beast=b, is_open=True).exists()]
+                 if b.id not in listed_ids and b.id not in tied]
     return render(request, "trade.html", {
-        "my_listings": my_listings, "market": market, "incoming": incoming,
-        "tradeable": tradeable, "nav": "trade",
+        "my_listings": my_listings, "market": market, "incoming": incoming, "outgoing": outgoing,
+        "tradeable": tradeable, "wallet": _wallet(request.user),
+        "max_beasts": TradeOffer.MAX_BEASTS, "trade_msg": request.session.pop("trade_msg", ""),
+        "nav": "trade",
     })
 
 
@@ -322,11 +331,53 @@ def trade_offer(request, listing_id):
         request.session["trade_msg"] = "Trading is a paid feature."
         return redirect("trade")
     listing = get_object_or_404(TradeListing, id=listing_id, is_open=True)
-    beast = get_object_or_404(OwnedBeast, id=request.POST.get("beast_id"), user=request.user, status="owned")
-    if not beast.verified:
-        request.session["trade_msg"] = "Only verified beasts (caught through a node) can be offered in trade."
-    elif listing.user_id != request.user.id:
-        TradeOffer.objects.create(listing=listing, from_user=request.user, offered_beast=beast)
+    if listing.user_id == request.user.id:
+        return redirect("trade")
+    # Up to 3 beasts (beast_id may repeat in the form) + a shards/cores sweetener.
+    ids = [i for i in request.POST.getlist("beast_id") if i]
+    try:
+        shards = max(0, int(request.POST.get("shards") or 0))
+        cores = max(0, int(request.POST.get("cores") or 0))
+    except (TypeError, ValueError):
+        request.session["trade_msg"] = "Bad resource amount."
+        return redirect("trade")
+    if not ids and not shards and not cores:
+        request.session["trade_msg"] = "Offer at least one beast or some resources."
+        return redirect("trade")
+    if len(ids) > TradeOffer.MAX_BEASTS:
+        request.session["trade_msg"] = f"You can offer at most {TradeOffer.MAX_BEASTS} beasts."
+        return redirect("trade")
+    with transaction.atomic():
+        wallet = Wallet.objects.select_for_update().get(user=request.user)
+        # beasts must be yours, owned, verified, and not already tied up in a pending offer / listing
+        tied = set(TradeOffer.objects.filter(from_user=request.user, status="pending")
+                   .values_list("offered_beasts__id", flat=True))
+        beasts = []
+        for bid in dict.fromkeys(ids):  # dedupe, preserve order
+            b = OwnedBeast.objects.filter(id=bid, user=request.user, status="owned").first()
+            if not b:
+                request.session["trade_msg"] = "One of those beasts isn't available."
+                return redirect("trade")
+            if not b.verified:
+                request.session["trade_msg"] = "Only verified beasts (caught through a node) can be offered."
+                return redirect("trade")
+            if b.id in tied or TradeListing.objects.filter(beast=b, is_open=True).exists():
+                request.session["trade_msg"] = "That beast is already listed or in another offer."
+                return redirect("trade")
+            beasts.append(b)
+        if shards > wallet.shards or cores > wallet.cores:
+            request.session["trade_msg"] = "Not enough resources for that offer."
+            return redirect("trade")
+        # escrow the currency so it can't be double-spent while the offer is pending
+        wallet.shards -= shards
+        wallet.cores -= cores
+        wallet.save(update_fields=["shards", "cores"])
+        offer = TradeOffer.objects.create(
+            listing=listing, from_user=request.user,
+            offered_beast=(beasts[0] if beasts else None),
+            offered_shards=shards, offered_cores=cores)
+        if beasts:
+            offer.offered_beasts.set(beasts)
     return redirect("trade")
 
 
@@ -337,26 +388,69 @@ def trade_accept(request, offer_id):
         return redirect("trade")
     offer = get_object_or_404(TradeOffer, id=offer_id, listing__user=request.user, status="pending")
     with transaction.atomic():
-        listing = offer.listing
+        listing = TradeListing.objects.select_for_update().get(id=offer.listing_id)
+        if not listing.is_open:
+            request.session["trade_msg"] = "That listing is no longer open."
+            return redirect("trade")
+        their_beasts = list(OwnedBeast.objects.select_for_update()
+                            .filter(id__in=[b.id for b in offer.beasts()]))
         my_beast = OwnedBeast.objects.select_for_update().get(id=listing.beast_id)
-        their_beast = OwnedBeast.objects.select_for_update().get(id=offer.offered_beast_id)
-        # swap ownership
-        my_beast.user, their_beast.user = offer.from_user, request.user
-        my_beast.status = their_beast.status = "owned"
+        # give the lister the offered beasts + escrowed resources
+        my_wallet = Wallet.objects.select_for_update().get(user=request.user)
+        for tb in their_beasts:
+            tb.user = request.user
+            tb.status = "owned"
+            tb.save(update_fields=["user", "status"])
+        my_wallet.shards += offer.offered_shards
+        my_wallet.cores += offer.offered_cores
+        my_wallet.save(update_fields=["shards", "cores"])
+        # give the offerer the listed beast
+        my_beast.user = offer.from_user
+        my_beast.status = "owned"
         my_beast.save(update_fields=["user", "status"])
-        their_beast.save(update_fields=["user", "status"])
         listing.is_open = False
         listing.save(update_fields=["is_open"])
         offer.status = "accepted"
         offer.save(update_fields=["status"])
-        # decline the rest
-        listing.offers.filter(status="pending").update(status="declined")
+        # decline + refund every other pending offer on this listing
+        for other in listing.offers.filter(status="pending").exclude(id=offer.id):
+            _refund_offer(other)
+            other.status = "declined"
+            other.save(update_fields=["status"])
     return redirect("trade")
+
+
+def _refund_offer(offer):
+    """Return escrowed shards/cores to the offerer (beasts free themselves once status != pending)."""
+    if offer.offered_shards or offer.offered_cores:
+        w = Wallet.objects.select_for_update().get(user=offer.from_user)
+        w.shards += offer.offered_shards
+        w.cores += offer.offered_cores
+        w.save(update_fields=["shards", "cores"])
 
 
 @login_required
 def trade_decline(request, offer_id):
-    TradeOffer.objects.filter(id=offer_id, listing__user=request.user, status="pending").update(status="declined")
+    with transaction.atomic():
+        offer = TradeOffer.objects.select_for_update().filter(
+            id=offer_id, listing__user=request.user, status="pending").first()
+        if offer:
+            _refund_offer(offer)
+            offer.status = "declined"
+            offer.save(update_fields=["status"])
+    return redirect("trade")
+
+
+@login_required
+def trade_withdraw(request, offer_id):
+    """Offerer withdraws their own pending offer (refunds escrow, frees the beasts)."""
+    with transaction.atomic():
+        offer = TradeOffer.objects.select_for_update().filter(
+            id=offer_id, from_user=request.user, status="pending").first()
+        if offer:
+            _refund_offer(offer)
+            offer.status = "declined"
+            offer.save(update_fields=["status"])
     return redirect("trade")
 
 

@@ -2,7 +2,12 @@
 {% block title %}Trade · WaveBeasts{% endblock %}
 {% block content %}
 <h1 style="margin:0 0 4px">Trade market</h1>
-<p class="muted" style="margin:0 0 18px">List a beast, browse the market, and offer one of yours in return. Accepted trades swap ownership instantly.</p>
+<p class="muted" style="margin:0 0 6px">List a beast, browse the market, and sweeten a deal with up to {{ max_beasts }} of your beasts plus resources. Accepted trades swap everything instantly.</p>
+{% if trade_msg %}<div class="card" style="border-color:var(--red);color:var(--red);padding:10px 14px;margin:0 0 12px">{{ trade_msg }}</div>{% endif %}
+<div class="stack" style="margin:0 0 16px">
+  <span class="chip silver">Shards <b>{{ wallet.shards }}</b></span>
+  <span class="chip acc">Cores <b>{{ wallet.cores }}</b></span>
+</div>
 
 <div class="card">
   <div class="section-label" style="margin-top:0">List a beast for trade</div>
@@ -24,12 +29,37 @@
   <tr><th>They offer</th><th>For your</th><th></th></tr>
   {% for o in incoming %}
   <tr>
-    <td>{{ o.from_user.username }}: <b>{{ o.offered_beast.name }}</b> ({{ o.offered_beast.rarity }} Lv{{ o.offered_beast.level }})</td>
+    <td>
+      <b>{{ o.from_user.username }}</b>:
+      {% for b in o.offered_beasts.all %}<span class="tag rt-{{ b.rarity }}" style="margin:1px 2px">{{ b.name }} Lv{{ b.level }}</span>{% empty %}{% if o.offered_beast %}<span class="tag rt-{{ o.offered_beast.rarity }}">{{ o.offered_beast.name }} Lv{{ o.offered_beast.level }}</span>{% endif %}{% endfor %}
+      {% if o.offered_shards %}<span class="chip silver" style="padding:2px 8px">+{{ o.offered_shards }} shards</span>{% endif %}
+      {% if o.offered_cores %}<span class="chip acc" style="padding:2px 8px">+{{ o.offered_cores }} cores</span>{% endif %}
+    </td>
     <td>{{ o.listing.beast.name }} ({{ o.listing.beast.rarity }})</td>
     <td style="text-align:right;white-space:nowrap">
       <form method="post" action="/trade/offer/{{ o.id }}/accept" style="display:inline">{% csrf_token %}<button class="btn sm" type="submit">Accept</button></form>
       <form method="post" action="/trade/offer/{{ o.id }}/decline" style="display:inline">{% csrf_token %}<button class="btn sec sm" type="submit">Decline</button></form>
     </td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% endif %}
+
+{% if outgoing %}
+<div class="section-label">Your pending offers</div>
+<div class="card" style="padding:6px 18px">
+<table>
+  <tr><th>You offered</th><th>For</th><th></th></tr>
+  {% for o in outgoing %}
+  <tr>
+    <td>
+      {% for b in o.offered_beasts.all %}<span class="tag rt-{{ b.rarity }}" style="margin:1px 2px">{{ b.name }} Lv{{ b.level }}</span>{% endfor %}
+      {% if o.offered_shards %}<span class="chip silver" style="padding:2px 8px">+{{ o.offered_shards }} shards</span>{% endif %}
+      {% if o.offered_cores %}<span class="chip acc" style="padding:2px 8px">+{{ o.offered_cores }} cores</span>{% endif %}
+    </td>
+    <td><b>{{ o.listing.beast.name }}</b> ({{ o.listing.beast.rarity }}) — {{ o.listing.user.username }}</td>
+    <td style="text-align:right"><form method="post" action="/trade/offer/{{ o.id }}/withdraw" style="display:inline">{% csrf_token %}<button class="btn sec sm" type="submit">Withdraw</button></form></td>
   </tr>
   {% endfor %}
 </table>
@@ -65,13 +95,24 @@
     <div class="ty">{{ l.beast.types_display }}</div>
     <span class="tag rt-{{ l.beast.rarity }}">{{ l.beast.rarity }}</span>
     <div class="dim" style="font-size:11px;margin-top:4px">by {{ l.user.username }}{% if l.note %} — "{{ l.note }}"{% endif %}</div>
-    {% if tradeable %}
-    <form method="post" action="/trade/{{ l.id }}/offer" class="stack" style="margin-top:8px;gap:6px">{% csrf_token %}
-      <select name="beast_id" class="grow" style="padding:6px;font-size:12px">
-        {% for b in tradeable %}<option value="{{ b.id }}">{{ b.name }} ({{ b.rarity }})</option>{% endfor %}
-      </select>
-      <button class="btn sm" type="submit">Offer</button>
-    </form>
+    {% if tradeable or wallet.shards or wallet.cores %}
+    <details style="margin-top:8px;text-align:left">
+      <summary class="btn sm" style="cursor:pointer;list-style:none;text-align:center">Make offer</summary>
+      <form method="post" action="/trade/{{ l.id }}/offer" style="margin-top:8px;display:flex;flex-direction:column;gap:6px">{% csrf_token %}
+        <label style="margin:0">Beasts (up to {{ max_beasts }})</label>
+        {% for n in "123"|make_list %}
+        <select name="beast_id" style="padding:6px;font-size:12px">
+          <option value="">— {% if forloop.first %}beast{% else %}add another{% endif %} —</option>
+          {% for b in tradeable %}<option value="{{ b.id }}">{{ b.name }} ({{ b.rarity }} Lv{{ b.level }})</option>{% endfor %}
+        </select>
+        {% endfor %}
+        <div class="stack" style="gap:6px">
+          <input name="shards" type="number" min="0" max="{{ wallet.shards }}" value="0" style="padding:6px;font-size:12px" placeholder="shards">
+          <input name="cores" type="number" min="0" max="{{ wallet.cores }}" value="0" style="padding:6px;font-size:12px" placeholder="cores">
+        </div>
+        <button class="btn sm" type="submit">Send offer</button>
+      </form>
+    </details>
     {% else %}<div class="dim" style="font-size:11px;margin-top:6px">catch a beast to offer</div>{% endif %}
   </div>
   {% endfor %}

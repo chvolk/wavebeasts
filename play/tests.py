@@ -57,6 +57,14 @@ class BuddyLogicTests(TestCase):
         # at least some resource/xp was granted somewhere
         self.assertTrue(self.wallet.shards >= before)
 
+    def test_fainted_buddy_earns_no_events(self):
+        beast = _beast(self.user)
+        beast.individual_json = {**beast.individual_json, "hp": 0, "hp_at": timezone.now().isoformat()}
+        beast.save()
+        b = Buddy.objects.create(user=self.user, beast=beast, relationship=100,
+                                 last_event_at=timezone.now() - timedelta(hours=10))
+        self.assertEqual(buddymod.accrue_events(b, self.wallet, beast), [])  # fainted -> no scouting
+
     def test_no_events_before_first_interval(self):
         beast = _beast(self.user)
         b = Buddy.objects.create(user=self.user, beast=beast, relationship=100,
@@ -382,6 +390,17 @@ class CatchTests(TestCase):
     def test_beasts_includes_account_name(self):
         r = self.client.get("/api/beasts", HTTP_X_WB_NODE_TOKEN=self.node.token)
         self.assertEqual(r.json()["account"], "catcher")
+
+    def test_heal_needs_potion_and_restores_hp(self):
+        b = self._wild(); b.status = "owned"; b.individual_json = {"hp": 10}; b.save()
+        r0 = self.client.post("/api/heal", data=json.dumps({"beast_id": b.id}),
+                              content_type="application/json", HTTP_X_WB_NODE_TOKEN=self.node.token)
+        self.assertEqual(r0.status_code, 409)  # no potion
+        InventoryItem.objects.create(user=self.user, item_id="potion", qty=1)
+        r = self.client.post("/api/heal", data=json.dumps({"beast_id": b.id}),
+                             content_type="application/json", HTTP_X_WB_NODE_TOKEN=self.node.token)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["beast"]["hp"], 100)
 
     def test_nickname_sets_on_account(self):
         b = self._wild(); b.status = "owned"; b.save()

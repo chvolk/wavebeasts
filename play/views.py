@@ -14,6 +14,7 @@ from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 
 from . import billing as billing_mod, buddy as buddymod, clerkauth, ladder, resolver
@@ -29,6 +30,30 @@ FREE_NODE_LIMIT = 3     # free accounts get 3 devices (e.g. phone + pi + pc)
 PAID_NODE_LIMIT = 12    # a paid account's sensor fleet cap
 WILD_TTL_SEC = 86400    # an uncaught wild sighting expires after a day so findings don't stack forever
 MAX_UNSEEN_WILD = 100   # hard cap on pending wild sightings per account (oldest culled first)
+# Beast health pool (account meta-HP, separate from in-battle stat HP). A fainted (0 HP) beast can't be
+# your Buddy scout and can't fight scan-battles until it heals (regen over time, or a Potion).
+HP_MAX = 100
+HP_REGEN_PER_HOUR = 20.0   # full recovery in ~5h
+HP_BATTLE_COST = 40        # HP each party member spends on a scan-battle
+
+
+def _hp_now(ind):
+    """Current health, regenerated over time from the stored (hp, hp_at). Defaults to full."""
+    base = ind.get("hp")
+    base = HP_MAX if base is None else base
+    at = parse_datetime(ind.get("hp_at", "") or "")
+    if at:
+        hrs = max(0.0, (timezone.now() - at).total_seconds() / 3600.0)
+        base = min(HP_MAX, base + hrs * HP_REGEN_PER_HOUR)
+    return max(0, min(HP_MAX, int(round(base))))
+
+
+def _set_hp(beast, val):
+    ind = beast.individual_json or {}
+    ind["hp"] = max(0, min(HP_MAX, int(val)))
+    ind["hp_at"] = timezone.now().isoformat()
+    beast.individual_json = ind
+    beast.save(update_fields=["individual_json"])
 
 
 def _wallet(user):
@@ -939,10 +964,11 @@ def api_beasts(request):
 
 def _beast_row(b):
     ind = b.individual_json or {}
+    hp = _hp_now(ind)
     row = {"id": b.id, "name": b.name, "rarity": b.rarity, "shiny": b.shiny, "level": b.level,
            "species_id": b.species_id, "verified": b.verified, "status": b.status,
            "types": (b.species_json or {}).get("types", []), "nickname": ind.get("nickname", ""),
-           "nature": ind.get("nature", "")}
+           "nature": ind.get("nature", ""), "hp": hp, "hp_max": HP_MAX, "fainted": hp <= 0}
     if b.status == "wild" and b.expires_at:
         row["expires_in"] = max(0, int((b.expires_at - timezone.now()).total_seconds()))
     return row
@@ -984,6 +1010,32 @@ def api_catch(request):
            else f"It broke free - {pct}% catch chance. Weaken it in battle or use a stronger drive.")
     return JsonResponse({"ok": True, "caught": caught, "chance": round(chance, 2), "drive": drive,
                          "remaining": inv.qty, "message": msg, "beast": _beast_row(beast)})
+
+
+@csrf_exempt
+def api_heal(request):
+    """Heal a beast to full by spending a Potion from the bag (node-token auth). Health also regenerates
+    over time on its own; this is the instant option."""
+    node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
+    if not node:
+        return JsonResponse({"error": "bad node token"}, status=403)
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"error": "bad json"}, status=400)
+    beast = OwnedBeast.objects.filter(id=data.get("beast_id"), user=node.user).first()
+    if not beast:
+        return JsonResponse({"error": "no such beast"}, status=404)
+    if _hp_now(beast.individual_json or {}) >= HP_MAX:
+        return JsonResponse({"error": "already at full health"}, status=409)
+    with transaction.atomic():
+        pot = InventoryItem.objects.select_for_update().filter(user=node.user, item_id="potion", qty__gt=0).first()
+        if not pot:
+            return JsonResponse({"error": "no potion in your bag"}, status=409)
+        pot.qty -= 1
+        pot.save()
+        _set_hp(beast, HP_MAX)
+    return JsonResponse({"ok": True, "beast": _beast_row(beast), "potions": pot.qty})
 
 
 @csrf_exempt
@@ -1115,6 +1167,18 @@ def _scan_party(user):
     return [_fighter(b) for b in beasts]
 
 
+def _healthy_party_beasts(user):
+    """Up to 3 party beasts that still have HP (your set team, else highest-level verified). A fainted
+    roster means no scan-battles until something heals."""
+    ids = _wallet(user).team_ids or []
+    if ids:
+        byid = {b.id: b for b in OwnedBeast.objects.filter(user=user, id__in=ids)}
+        beasts = [byid[i] for i in ids if i in byid]
+    else:
+        beasts = list(OwnedBeast.objects.filter(user=user, status="owned", verified=True).order_by("-level")[:6])
+    return [b for b in beasts if _hp_now(b.individual_json or {}) > 0][:3]
+
+
 def _cull_wilds(user):
     """Expire timed-out wild sightings and keep only the newest MAX_UNSEEN_WILD pending ones."""
     now = timezone.now()
@@ -1144,14 +1208,17 @@ def _apply_beast(node, res):
         b = _create_beast(node, sp, ind, "owned")  # first catch is free
         return {"detail": f"caught (free) {sp.get('name')} [{ind.get('rarity')}]",
                 "beast": _beast_row(b), "caught": True, "free": True, "fled": False, "battled": False}
-    # You have a party - a wild sometimes challenges you to a battle first.
-    party = _scan_party(user)
-    battled = bool(party) and random.random() < 0.35
+    # A wild sometimes challenges you to a battle first - but only if you have a HEALTHY party.
+    party_beasts = _healthy_party_beasts(user)
+    battled = bool(party_beasts) and random.random() < 0.35
     if battled:
+        fighters = [_fighter(b) for b in party_beasts]
         try:
-            won = resolver.battle_auto(party, [{"species": sp, "individual": ind}]).get("winner") == "a"
+            won = resolver.battle_auto(fighters, [{"species": sp, "individual": ind}]).get("winner") == "a"
         except Exception:
             won = True  # don't punish the player if the resolver hiccups
+        for b in party_beasts:  # a fight costs the whole party some health either way
+            _set_hp(b, _hp_now(b.individual_json or {}) - HP_BATTLE_COST)
         if not won:
             return {"detail": f"{sp.get('name')} bested your team and fled",
                     "beast": None, "caught": False, "fled": True, "battled": True}

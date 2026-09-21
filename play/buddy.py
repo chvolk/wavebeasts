@@ -149,6 +149,8 @@ def accrue_events(buddy, wallet, beast):
     if not buddy.last_event_at:
         buddy.last_event_at = now
         return []
+    if beast is not None and beast_hp(beast.individual_json or {}) <= 0:
+        return []  # a fainted buddy can't scout until it heals
     interval = timedelta(minutes=event_interval_min(buddy.relationship))
     events, n = [], 0
     while now - buddy.last_event_at >= interval and n < EVENT_CAP:
@@ -160,14 +162,31 @@ def accrue_events(buddy, wallet, beast):
     return events
 
 
+HP_MAX = 100
+HP_REGEN_PER_HOUR = 20.0
+
+
+def beast_hp(ind):
+    """Current health with time-regen (mirrors views._hp_now). A fainted buddy can't scout."""
+    base = ind.get("hp")
+    base = HP_MAX if base is None else base
+    at = parse_datetime(ind.get("hp_at", "") or "")
+    if at:
+        hrs = max(0.0, (timezone.now() - at).total_seconds() / 3600.0)
+        base = min(HP_MAX, base + hrs * HP_REGEN_PER_HOUR)
+    return max(0, min(HP_MAX, int(round(base))))
+
+
 def beast_summary(beast):
     if beast is None:
         return None
     sp = beast.species_json or {}
     ind = beast.individual_json or {}
+    hp = beast_hp(ind)
     return {"id": beast.id, "name": beast.name, "rarity": beast.rarity, "shiny": beast.shiny,
             "level": beast.level, "species_id": beast.species_id, "types": sp.get("types", []),
-            "nickname": ind.get("nickname", ""), "nature": ind.get("nature", "")}
+            "nickname": ind.get("nickname", ""), "nature": ind.get("nature", ""),
+            "hp": hp, "hp_max": HP_MAX, "fainted": hp <= 0}
 
 
 def state(buddy):

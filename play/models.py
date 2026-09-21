@@ -125,6 +125,22 @@ class OwnedBeast(models.Model):
         return " / ".join((self.species_json or {}).get("types", []))
 
     @property
+    def expires_in(self):
+        """Seconds until a wild sighting expires (None once owned)."""
+        if self.status == "wild" and self.expires_at:
+            return max(0, int((self.expires_at - timezone.now()).total_seconds()))
+        return None
+
+    @property
+    def expires_label(self):
+        s = self.expires_in
+        if s is None:
+            return ""
+        if s >= 3600:
+            return f"{s // 3600}h {(s % 3600) // 60}m"
+        return f"{max(1, s // 60)}m" if s >= 60 else f"{s}s"
+
+    @property
     def tribe(self):
         return (self.species_json or {}).get("tribe", "")
 

@@ -253,7 +253,21 @@ def signup(request):
 # ---- beastiary -----------------------------------------------------------------------------------
 
 @login_required
+def beast_nickname(request, beast_id):
+    """Rename one of your beasts from the site (session auth)."""
+    if request.method == "POST":
+        b = OwnedBeast.objects.filter(id=beast_id, user=request.user).first()
+        if b:
+            ind = b.individual_json or {}
+            ind["nickname"] = (request.POST.get("nickname") or "").strip()[:24]
+            b.individual_json = ind
+            b.save(update_fields=["individual_json"])
+    return redirect("dashboard")
+
+
+@login_required
 def dashboard(request):
+    _cull_wilds(request.user)  # hide expired/overflow sightings on the web too
     beasts = list(request.user.beasts.all())
     listed_ids = set(TradeListing.objects.filter(user=request.user, is_open=True).values_list("beast_id", flat=True))
     team = _wallet(request.user).team_ids or []

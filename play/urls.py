@@ -21,6 +21,7 @@ urlpatterns = [
     path("billing/portal", views.billing_portal, name="billing_portal"),
     path("webhooks/stripe", views.stripe_webhook, name="stripe_webhook"),
     path("me/", views.dashboard, name="dashboard"),
+    path("me/<int:beast_id>/nickname", views.beast_nickname, name="beast_nickname"),
     path("beast/<int:beast_id>/catch", views.catch, name="catch"),
     path("sprite/<int:beast_id>.png", views.sprite, name="sprite"),
 

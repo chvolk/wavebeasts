@@ -16,10 +16,16 @@
     {% if b.shiny %}<span class="shiny">SHINY</span>{% endif %}
     <span class="lv">Lv {{ b.level }}</span>
     <div class="stage"><img src="/sprite/{{ b.id }}.png" alt="" loading="lazy"></div>
-    <div class="nm">{{ b.name }}</div>
+    <div class="nm">{{ b.individual_json.nickname|default:b.name }}</div>
     <div class="ty">{{ b.types_display }} · {{ b.tribe }}</div>
     <span class="tag rt-{{ b.rarity }}">{{ b.rarity }}</span>
     {% if b.id in listed_ids %}<div class="dim" style="font-size:11px;margin-top:6px">listed for trade</div>{% endif %}
+    <details style="margin-top:6px"><summary class="dim" style="font-size:11px;cursor:pointer">Rename</summary>
+      <form method="post" action="/me/{{ b.id }}/nickname" class="stack" style="margin-top:4px;gap:4px">{% csrf_token %}
+        <input name="nickname" maxlength="24" value="{{ b.individual_json.nickname }}" placeholder="{{ b.name }}" style="padding:5px;font-size:12px">
+        <button class="btn sm" type="submit">Save</button>
+      </form>
+    </details>
   </div>
   {% endfor %}
 </div>
@@ -37,6 +43,7 @@
     <div class="nm">{{ b.name }}</div>
     <div class="ty">{{ b.types_display }}</div>
     <span class="tag rt-{{ b.rarity }}">{{ b.rarity }}</span>
+    {% if b.expires_label %}<div class="dim" style="font-size:11px;margin-top:4px">expires in {{ b.expires_label }}</div>{% endif %}
     <form method="post" action="/beast/{{ b.id }}/catch" class="stack" style="margin-top:8px;gap:6px">{% csrf_token %}
       <select name="drive" class="grow" style="padding:7px">
         <option value="spark_drive">Spark</option><option value="pulse_drive">Pulse</option>

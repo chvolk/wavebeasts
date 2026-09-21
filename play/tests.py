@@ -165,6 +165,17 @@ class ManagedPaymentsTests(TestCase):
         self.assertNotIn("stripe_version", kwargs)  # no preview pin on the stable flow
         ms.Product.modify.assert_not_called()
 
+    def test_apply_event_handles_stripeobject_and_flips_subscribed(self):
+        import stripe
+        self.wallet.stripe_customer_id = "cus_x"; self.wallet.subscribed = False; self.wallet.save()
+        # A real StripeObject, exactly what construct_event returns (NOT a dict) — this is what broke live.
+        evt = stripe.Event.construct_from(
+            {"type": "checkout.session.completed", "data": {"object": {"customer": "cus_x"}}}, "sk_test")
+        self.assertNotIsInstance(evt, dict)
+        self.assertTrue(self.billing.apply_event(evt))
+        self.wallet.refresh_from_db()
+        self.assertTrue(self.wallet.subscribed)
+
     @override_settings(STRIPE_MANAGED_PAYMENTS=False)
     @patch("play.billing.stripe")
     def test_stale_customer_from_other_mode_is_recreated(self, ms):

@@ -92,6 +92,10 @@ def apply_event(event):
     """Update the matching wallet from a Stripe webhook event. Returns True if a wallet was updated."""
     from .models import Wallet
 
+    # construct_event returns a StripeObject, whose .get() raises in stripe-python 15.x — normalize to a
+    # plain dict so attribute access is uniform (tests pass a dict; the live webhook passes a StripeObject).
+    if not isinstance(event, dict):
+        event = event.to_dict()  # StripeObject -> fully nested plain dict (data/object become dicts too)
     etype = event.get("type", "")
     obj = event.get("data", {}).get("object", {})
     cust = obj.get("customer")

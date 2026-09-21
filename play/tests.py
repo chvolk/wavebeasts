@@ -103,8 +103,14 @@ class AuthBillingTests(TestCase):
         self.assertEqual(self.client.get("/sign-in/").status_code, 200)
         self.assertEqual(self.client.get("/sign-up/").status_code, 200)
 
-    def test_django_login_fallback_still_exists(self):
-        self.assertEqual(self.client.get("/login/").status_code, 200)  # fallback when Clerk isn't configured
+    @override_settings(CLERK_PUBLISHABLE_KEY="")
+    def test_django_login_fallback_when_clerk_off(self):
+        self.assertEqual(self.client.get("/login/").status_code, 200)  # Django form when Clerk isn't configured
+
+    @override_settings(CLERK_PUBLISHABLE_KEY="pk_test_x")
+    def test_login_and_signup_redirect_to_clerk_when_on(self):
+        self.assertRedirects(self.client.get("/login/"), "/sign-in/", fetch_redirect_response=False)
+        self.assertRedirects(self.client.get("/signup/"), "/sign-up/", fetch_redirect_response=False)
 
     @patch("play.clerkauth.verify_clerk_token")
     def test_auth_clerk_creates_user_and_session(self, mv):

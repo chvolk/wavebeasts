@@ -182,7 +182,17 @@ def app_apk(request):
     return resp
 
 
+def login_page(request):
+    """Django's built-in login, but bounce to Clerk when it's configured (the old /login/ URL)."""
+    if settings.CLERK_PUBLISHABLE_KEY:
+        return redirect("/sign-in/")
+    from django.contrib.auth.views import LoginView
+    return LoginView.as_view(template_name="login.html")(request)
+
+
 def signup(request):
+    if settings.CLERK_PUBLISHABLE_KEY:
+        return redirect("/sign-up/")
     form = UserCreationForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.save()

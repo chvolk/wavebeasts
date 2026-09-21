@@ -21,13 +21,23 @@
       else { document.getElementById('clerk-fallback').textContent='Could not complete sign-in.'; }
     }catch(e){ document.getElementById('clerk-fallback').textContent='Sign-in error.'; }
   }
+  window.__wbClerkLoaded = false;
   window.__wbClerkReady = function(clerk){
+    window.__wbClerkLoaded = true;
     if(clerk.user){ return exchange(clerk); }
     var el=document.getElementById('clerk-auth'); if(!el) return;
     var opts={afterSignInUrl:'{{ request.path }}', afterSignUpUrl:'{{ request.path }}'};
     {% if mode == 'sign-up' %}clerk.mountSignUp(el,opts);{% else %}clerk.mountSignIn(el,opts);{% endif %}
     clerk.addListener(function(e){ if(e.user) exchange(clerk); });
   };
+  // If Clerk never loads (e.g. its DNS/SSL isn't set up yet) the page would otherwise sit blank.
+  setTimeout(function(){
+    if(window.__wbClerkLoaded) return;
+    var el=document.getElementById('clerk-auth');
+    if(el && el.childElementCount>0) return;  // component did mount
+    var fb=document.getElementById('clerk-fallback');
+    if(fb) fb.innerHTML='Sign-in is temporarily unavailable. Please try again shortly — if this persists, the auth service is still finishing setup.';
+  }, 7000);
 })();
 </script>
 {% endblock %}

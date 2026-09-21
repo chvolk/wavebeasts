@@ -132,7 +132,7 @@ class AuthBillingTests(TestCase):
 
 @override_settings(STRIPE_SECRET_KEY="sk_test_x", STRIPE_PRICE_MONTHLY="price_m",
                    STRIPE_PRICE_ANNUAL="price_a", STRIPE_PREVIEW_VERSION="2026-02-25.preview",
-                   STRIPE_TAX_CODE="txcd_10103100")
+                   STRIPE_TAX_CODE="txcd_10103000")
 class ManagedPaymentsTests(TestCase):
     def setUp(self):
         from . import billing
@@ -151,7 +151,7 @@ class ManagedPaymentsTests(TestCase):
         kwargs = ms.checkout.Session.create.call_args.kwargs
         self.assertEqual(kwargs.get("managed_payments"), {"enabled": True})
         self.assertEqual(kwargs.get("stripe_version"), "2026-02-25.preview")
-        ms.Product.modify.assert_called_once_with("prod_1", tax_code="txcd_10103100")
+        ms.Product.modify.assert_called_once_with("prod_1", tax_code="txcd_10103000")
 
     @override_settings(STRIPE_MANAGED_PAYMENTS=False)
     @patch("play.billing.stripe")

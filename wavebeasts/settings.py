@@ -181,7 +181,7 @@ SITE_URL = os.environ.get("SITE_URL", "https://wavebeasts.com")
 # deploy — set STRIPE_MANAGED_PAYMENTS=1 (with the tax_code set on the product) to turn it on.
 STRIPE_MANAGED_PAYMENTS = os.environ.get("STRIPE_MANAGED_PAYMENTS", "0") in ("1", "true", "True")
 STRIPE_PREVIEW_VERSION = os.environ.get("STRIPE_PREVIEW_VERSION", "2026-02-25.preview")
-STRIPE_TAX_CODE = os.environ.get("STRIPE_TAX_CODE", "txcd_10103100")  # SaaS (business use)
+STRIPE_TAX_CODE = os.environ.get("STRIPE_TAX_CODE", "txcd_10103000")  # SaaS (personal use) — consumer game
 
 # Auth is Clerk when its keys are present; otherwise fall back to Django's built-in login.
 LOGIN_URL = "/sign-in/" if CLERK_PUBLISHABLE_KEY else "/login/"

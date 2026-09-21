@@ -2,6 +2,6 @@
 the app compares its installed versionCode against this and prompts to update. Keep VERSION_CODE in sync
 with android/app/build.gradle's versionCode in the wavebeast repo."""
 
-VERSION_CODE = 16
-VERSION_NAME = "0.11.5"
-NOTES = "Local-only offline mode, plus the WaveBeasts rename and scan overhaul."
+VERSION_CODE = 17
+VERSION_NAME = "0.11.6"
+NOTES = "New WaveBeasts app icon."

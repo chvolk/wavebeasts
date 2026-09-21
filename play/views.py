@@ -25,8 +25,10 @@ RARITY_RESIST = {"common": 1.0, "uncommon": 0.85, "rare": 0.65, "epic": 0.45, "l
 BOOST_COST_CORES = 1
 BOOST_DURATION_SEC = 600
 GYM_CODES = ["wb-gym-ember", "wb-gym-tide", "wb-gym-stone"]
-FREE_NODE_LIMIT = 1     # a free account can feed itself from one external sensor rig
+FREE_NODE_LIMIT = 3     # free accounts get 3 devices (e.g. phone + pi + pc)
 PAID_NODE_LIMIT = 12    # a paid account's sensor fleet cap
+WILD_TTL_SEC = 86400    # an uncaught wild sighting expires after a day so findings don't stack forever
+MAX_UNSEEN_WILD = 100   # hard cap on pending wild sightings per account (oldest culled first)
 
 
 def _wallet(user):
@@ -921,24 +923,29 @@ def api_beasts(request):
     node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
     if not node:
         return JsonResponse({"error": "bad node token"}, status=403)
+    _cull_wilds(node.user)  # don't show expired/overflow sightings
     out = []
     for b in node.user.beasts.exclude(status="wild").order_by("-caught_at")[:500]:
         out.append(_beast_row(b))
-    wild = [_beast_row(b) for b in node.user.beasts.filter(status="wild").order_by("-caught_at")[:100]]
+    wild = [_beast_row(b) for b in node.user.beasts.filter(status="wild").order_by("-caught_at")[:MAX_UNSEEN_WILD]]
     inv = {i.item_id: i.qty for i in node.user.items.filter(qty__gt=0)}
     buddy = getattr(node.user, "buddy", None)
     w = _wallet(node.user)
-    return JsonResponse({"ok": True, "beasts": out, "wild": wild, "inventory": inv,
+    return JsonResponse({"ok": True, "account": node.user.username, "node": node.name,
+                         "beasts": out, "wild": wild, "inventory": inv,
                          "buddy_beast_id": getattr(buddy, "beast_id", None),
                          "subscribed": w.subscribed, "shards": w.shards, "cores": w.cores})
 
 
 def _beast_row(b):
     ind = b.individual_json or {}
-    return {"id": b.id, "name": b.name, "rarity": b.rarity, "shiny": b.shiny, "level": b.level,
-            "species_id": b.species_id, "verified": b.verified, "status": b.status,
-            "types": (b.species_json or {}).get("types", []), "nickname": ind.get("nickname", ""),
-            "nature": ind.get("nature", "")}
+    row = {"id": b.id, "name": b.name, "rarity": b.rarity, "shiny": b.shiny, "level": b.level,
+           "species_id": b.species_id, "verified": b.verified, "status": b.status,
+           "types": (b.species_json or {}).get("types", []), "nickname": ind.get("nickname", ""),
+           "nature": ind.get("nature", "")}
+    if b.status == "wild" and b.expires_at:
+        row["expires_in"] = max(0, int((b.expires_at - timezone.now()).total_seconds()))
+    return row
 
 
 @csrf_exempt
@@ -955,6 +962,9 @@ def api_catch(request):
     beast = OwnedBeast.objects.filter(id=data.get("beast_id"), user=node.user, status="wild").first()
     if not beast:
         return JsonResponse({"error": "no such wild sighting"}, status=404)
+    if beast.expires_at and beast.expires_at < timezone.now():
+        beast.delete()
+        return JsonResponse({"error": "that sighting expired", "expired": True}, status=410)
     drive = str(data.get("drive") or "spark_drive")
     with transaction.atomic():
         inv = InventoryItem.objects.select_for_update().filter(user=node.user, item_id=drive, qty__gt=0).first()
@@ -967,9 +977,35 @@ def api_catch(request):
         caught = random.random() < chance
         if caught:
             beast.status = "owned"
-            beast.save(update_fields=["status"])
+            beast.expires_at = None  # kept for good once caught
+            beast.save(update_fields=["status", "expires_at"])
+    pct = round(chance * 100)
+    msg = (f"Caught it! ({pct}% with the {drive.replace('_', ' ')})" if caught
+           else f"It broke free - {pct}% catch chance. Weaken it in battle or use a stronger drive.")
     return JsonResponse({"ok": True, "caught": caught, "chance": round(chance, 2), "drive": drive,
-                         "remaining": inv.qty, "beast": _beast_row(beast)})
+                         "remaining": inv.qty, "message": msg, "beast": _beast_row(beast)})
+
+
+@csrf_exempt
+def api_nickname(request):
+    """Set (or clear) a beast's nickname on the account (node-token auth). Any node can rename; the account
+    is the source of truth, so premium apps see it sync across devices immediately."""
+    node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
+    if not node:
+        return JsonResponse({"error": "bad node token"}, status=403)
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"error": "bad json"}, status=400)
+    beast = OwnedBeast.objects.filter(id=data.get("beast_id"), user=node.user).first()
+    if not beast:
+        return JsonResponse({"error": "no such beast"}, status=404)
+    nick = (data.get("nickname") or "").strip()[:24]
+    ind = beast.individual_json or {}
+    ind["nickname"] = nick
+    beast.individual_json = ind
+    beast.save(update_fields=["individual_json"])
+    return JsonResponse({"ok": True, "beast": _beast_row(beast)})
 
 
 # ---- Buddy API (paid) - the tamagotchi companion custom apps carry -------------------------------
@@ -1079,17 +1115,30 @@ def _scan_party(user):
     return [_fighter(b) for b in beasts]
 
 
+def _cull_wilds(user):
+    """Expire timed-out wild sightings and keep only the newest MAX_UNSEEN_WILD pending ones."""
+    now = timezone.now()
+    OwnedBeast.objects.filter(user=user, status="wild", expires_at__lt=now).delete()
+    extra = list(OwnedBeast.objects.filter(user=user, status="wild").order_by("-caught_at")
+                 .values_list("id", flat=True)[MAX_UNSEEN_WILD:])
+    if extra:
+        OwnedBeast.objects.filter(id__in=extra).delete()
+
+
 def _create_beast(node, sp, ind, status):
+    expires = timezone.now() + timezone.timedelta(seconds=WILD_TTL_SEC) if status == "wild" else None
     return OwnedBeast.objects.create(
         user=node.user, node=node, species_id=sp.get("species_id", ""), id_version=sp.get("id_version", 1),
         name=sp.get("name", "?"), rarity=ind.get("rarity", "common"), shiny=bool(ind.get("shiny")),
-        level=ind.get("level", 1), status=status, verified=True, species_json=sp, individual_json=ind)
+        level=ind.get("level", 1), status=status, verified=True, species_json=sp, individual_json=ind,
+        expires_at=expires)
 
 
 def _apply_beast(node, res):
     """Create the server-rolled (verified) beast on the account. Returns a dict the snapshot response
     surfaces so a client can reveal it: {detail, beast, caught, fled, battled}."""
     user = node.user
+    _cull_wilds(user)  # drop expired/overflow sightings before adding a new one
     sp, ind = res.get("species", {}), res.get("individual", {})
     if OwnedBeast.objects.filter(user=user, status="owned").count() == 0:
         b = _create_beast(node, sp, ind, "owned")  # first catch is free

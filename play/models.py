@@ -115,6 +115,7 @@ class OwnedBeast(models.Model):
     species_json = models.JSONField()
     individual_json = models.JSONField()
     caught_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)  # wild sightings expire; null once owned
 
     class Meta:
         ordering = ["-caught_at"]

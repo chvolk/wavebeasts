@@ -205,10 +205,10 @@ class TieringTests(TestCase):
         self.client.force_login(self.user)
         self.wallet = Wallet.objects.get_or_create(user=self.user)[0]  # subscribed defaults False now
 
-    def test_free_account_capped_at_one_node(self):
-        self.client.post("/nodes/new", {"name": "rig1"})
-        self.client.post("/nodes/new", {"name": "rig2"})
-        self.assertEqual(self.user.nodes.count(), 1)
+    def test_free_account_capped_at_three_nodes(self):
+        for i in range(5):
+            self.client.post("/nodes/new", {"name": f"rig{i}"})
+        self.assertEqual(self.user.nodes.count(), 3)  # phone + pi + pc
 
     def test_paid_account_capped_at_twelve(self):
         self.wallet.subscribed = True
@@ -225,9 +225,10 @@ class TieringTests(TestCase):
         self.assertContains(r, n.token)  # surfaced for copy after redirect
 
     def test_app_token_respects_node_cap(self):
-        Node.objects.create(user=self.user, name="rig1")  # free cap = 1
+        for i in range(3):
+            Node.objects.create(user=self.user, name=f"rig{i}")  # free cap = 3
         self.client.post("/nodes/app-token")
-        self.assertEqual(self.user.nodes.count(), 1)  # blocked, none added
+        self.assertEqual(self.user.nodes.count(), 3)  # blocked, none added
 
     def test_battle_and_ladder_require_paid(self):
         _beast(self.user)
@@ -377,6 +378,25 @@ class CatchTests(TestCase):
         r = self._catch(w.id, "nova_drive")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.json()["remaining"], 0)  # drive consumed regardless of outcome
+
+    def test_beasts_includes_account_name(self):
+        r = self.client.get("/api/beasts", HTTP_X_WB_NODE_TOKEN=self.node.token)
+        self.assertEqual(r.json()["account"], "catcher")
+
+    def test_nickname_sets_on_account(self):
+        b = self._wild(); b.status = "owned"; b.save()
+        r = self.client.post("/api/nickname", data=json.dumps({"beast_id": b.id, "nickname": "Sparky"}),
+                             content_type="application/json", HTTP_X_WB_NODE_TOKEN=self.node.token)
+        self.assertEqual(r.status_code, 200)
+        b.refresh_from_db()
+        self.assertEqual(b.individual_json["nickname"], "Sparky")
+
+    def test_expired_wild_is_culled(self):
+        from datetime import timedelta
+        b = self._wild(); b.expires_at = timezone.now() - timedelta(hours=1); b.save()
+        r = self.client.get("/api/beasts", HTTP_X_WB_NODE_TOKEN=self.node.token)
+        self.assertEqual(len(r.json()["wild"]), 0)
+        self.assertFalse(OwnedBeast.objects.filter(id=b.id).exists())
 
     @patch("play.resolver.generate")
     def test_snapshot_returns_verified_beast(self, mgen):

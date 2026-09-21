@@ -201,6 +201,29 @@ class SyncTests(TestCase):
 
 
 @override_settings(ALLOWED_HOSTS=["testserver"])
+class ReleaseTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("releaser", password="x")
+        Wallet.objects.get_or_create(user=self.user)
+        self.node = Node.objects.create(user=self.user, name="app")
+
+    def _rel(self, bid):
+        return self.client.post("/api/release", data=json.dumps({"beast_id": bid}),
+                                content_type="application/json", HTTP_X_WB_NODE_TOKEN=self.node.token)
+
+    def test_release_removes_beast(self):
+        b = _beast(self.user)
+        self.assertEqual(self._rel(b.id).status_code, 200)
+        self.assertFalse(OwnedBeast.objects.filter(id=b.id).exists())
+
+    def test_cannot_release_slotted_buddy(self):
+        b = _beast(self.user)
+        Buddy.objects.create(user=self.user, beast=b)
+        self.assertEqual(self._rel(b.id).status_code, 409)
+        self.assertTrue(OwnedBeast.objects.filter(id=b.id).exists())
+
+
+@override_settings(ALLOWED_HOSTS=["testserver"])
 class CatchTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("catcher", password="x")

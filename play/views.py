@@ -522,6 +522,34 @@ def api_sync(request):
 
 
 @csrf_exempt
+def api_release(request):
+    """Release a beast back to the waves — permanently removes it from the account (node-token auth,
+    free). Can't release your slotted buddy; also clears it from your team and any open trade listing."""
+    node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
+    if not node:
+        return JsonResponse({"error": "bad node token"}, status=403)
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"error": "bad json"}, status=400)
+    beast = OwnedBeast.objects.filter(id=data.get("beast_id"), user=node.user).first()
+    if not beast:
+        return JsonResponse({"error": "no such beast"}, status=404)
+    buddy = getattr(node.user, "buddy", None)
+    if buddy and buddy.beast_id == beast.id:
+        return JsonResponse({"error": "unslot your buddy before releasing it"}, status=409)
+    TradeListing.objects.filter(beast=beast, is_open=True).update(is_open=False)
+    w = _wallet(node.user)
+    kept = [i for i in (w.team_ids or []) if str(i) != str(beast.id)]
+    if kept != (w.team_ids or []):
+        w.team_ids = kept
+        w.save(update_fields=["team_ids"])
+    name = beast.name
+    beast.delete()
+    return JsonResponse({"ok": True, "released": name})
+
+
+@csrf_exempt
 def api_shop(request):
     """The item catalog (node-token auth). Prices come from the engine so the site owns them."""
     node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()

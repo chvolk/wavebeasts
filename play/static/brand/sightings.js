@@ -20,7 +20,7 @@
       node.classList.toggle('expiring',seconds>0&&seconds<=300);node.classList.toggle('expired',seconds===0);
       if(!seconds){
         const card=node.closest('[data-wild-card]');
-        if(card){card.classList.add('sighting-expired');card.querySelectorAll('[data-wild-action],form button,form select').forEach(control=>{control.disabled=true;control.setAttribute('aria-disabled','true');if(control.tagName==='A')control.removeAttribute('href');});}
+        if(card){card.classList.add('sighting-expired');card.querySelectorAll('[data-wild-action],[data-catch-form] button,[data-catch-form] select').forEach(control=>{control.disabled=true;control.setAttribute('aria-disabled','true');if(control.tagName==='A')control.removeAttribute('href');});}
       }
     });
   }

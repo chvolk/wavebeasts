@@ -36,3 +36,62 @@ class SightingTests(TestCase):
         self.client.get('/me/')
         self.beast.refresh_from_db()
         self.assertEqual(self.beast.expires_at,self.beast.caught_at+timedelta(days=1))
+
+    def test_only_owned_capture_drives_are_offered(self):
+        InventoryItem.objects.create(user=self.user,item_id='pulse_drive',qty=2)
+        InventoryItem.objects.create(user=self.user,item_id='nova_drive',qty=0)
+        InventoryItem.objects.create(user=self.user,item_id='potion',qty=4)
+        page=self.client.get('/me/')
+        self.assertContains(page,'<option value="pulse_drive">Pulse Drive ×2</option>',html=True)
+        self.assertNotContains(page,'<option value="spark_drive">')
+        self.assertNotContains(page,'<option value="nova_drive">')
+        self.assertNotContains(page,'<option value="potion">')
+        row=self.client.get('/api/beasts',HTTP_X_WB_NODE_TOKEN=self.node.token).json()
+        self.assertEqual(row['catch_drives'],[{'item_id':'pulse_drive','name':'Pulse Drive','qty':2}])
+
+    def test_no_drives_keeps_dismiss_available(self):
+        page=self.client.get('/me/')
+        self.assertContains(page,'No capture drives in your inventory.')
+        self.assertContains(page,f'/beast/{self.beast.id}/dismiss')
+        self.assertNotContains(page,'data-catch-form')
+
+    def test_dismiss_only_own_wild_sightings(self):
+        import json
+        other=User.objects.create_user('other-hunter')
+        foreign=_beast(other);foreign.status='wild';foreign.save()
+        owned=_beast(self.user)
+        for target in [foreign,owned]:
+            response=self.client.post('/api/sightings/dismiss',json.dumps({'beast_id':target.id}),content_type='application/json',HTTP_X_WB_NODE_TOKEN=self.node.token)
+            self.assertEqual(response.status_code,404)
+            self.assertTrue(type(target).objects.filter(pk=target.pk).exists())
+        response=self.client.post('/api/sightings/dismiss',json.dumps({'beast_id':self.beast.id}),content_type='application/json',HTTP_X_WB_NODE_TOKEN=self.node.token)
+        self.assertEqual(response.status_code,200)
+        self.assertFalse(self.user.beasts.filter(pk=self.beast.pk).exists())
+        self.assertEqual(self.client.get('/api/sightings/dismiss').status_code,405)
+        self.assertEqual(self.client.get(f'/beast/{owned.id}/dismiss').status_code,405)
+
+    def test_web_dismiss_preserves_inventory(self):
+        item=InventoryItem.objects.create(user=self.user,item_id='pulse_drive',qty=2)
+        self.client.post(f'/beast/{self.beast.id}/dismiss')
+        self.assertFalse(self.user.beasts.filter(pk=self.beast.pk).exists())
+        item.refresh_from_db();self.assertEqual(item.qty,2)
+
+    def test_non_drive_items_cannot_be_spent_on_catches(self):
+        import json
+        item=InventoryItem.objects.create(user=self.user,item_id='potion',qty=2)
+        response=self.client.post('/api/catch',json.dumps({'beast_id':self.beast.id,'drive':'potion'}),content_type='application/json',HTTP_X_WB_NODE_TOKEN=self.node.token)
+        self.assertEqual(response.status_code,400)
+        self.client.post(f'/beast/{self.beast.id}/catch',{'drive':'potion'})
+        item.refresh_from_db();self.assertEqual(item.qty,2)
+
+    def test_spent_last_drive_disappears_and_caught_beast_cannot_be_dismissed(self):
+        from unittest.mock import patch
+        import json
+        InventoryItem.objects.create(user=self.user,item_id='pulse_drive',qty=1)
+        with patch('play.views.random.random',return_value=0):
+            response=self.client.post('/api/catch',json.dumps({'beast_id':self.beast.id,'drive':'pulse_drive'}),content_type='application/json',HTTP_X_WB_NODE_TOKEN=self.node.token)
+        self.assertTrue(response.json()['caught'])
+        self.beast.refresh_from_db();self.assertIsNone(self.beast.expires_at)
+        self.assertEqual(self.client.get('/api/beasts',HTTP_X_WB_NODE_TOKEN=self.node.token).json()['catch_drives'],[])
+        response=self.client.post('/api/sightings/dismiss',json.dumps({'beast_id':self.beast.id}),content_type='application/json',HTTP_X_WB_NODE_TOKEN=self.node.token)
+        self.assertEqual(response.status_code,404)

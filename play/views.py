@@ -323,26 +323,66 @@ def dashboard(request):
         "listed_ids": listed_ids,
         "team": team,
         "nav": "beastiary",
+        "catch_drives": _owned_drives(request.user),
+        "discovery_msg": request.session.pop("discovery_msg", ""),
     })
+
+
+def _owned_drives(user):
+    quantities = dict(user.items.filter(item_id__in=DRIVE_MULT, qty__gt=0).values_list("item_id", "qty"))
+    return [{"item_id": key, "name": key.replace("_", " ").title(), "qty": quantities[key]}
+            for key in DRIVE_MULT if key in quantities]
+
+
+@transaction.atomic
+def _catch_sighting(user, beast_id, drive):
+    beast = OwnedBeast.objects.select_for_update().filter(id=beast_id, user=user, status="wild").first()
+    if not beast:
+        return {"error": "That sighting is no longer in your discovery queue."}, 404
+    if beast.expires_at and beast.expires_at <= timezone.now():
+        beast.delete()
+        return {"error": "That sighting expired.", "expired": True}, 410
+    if drive not in DRIVE_MULT:
+        return {"error": "Choose a capture drive from your inventory."}, 400
+    inv = InventoryItem.objects.select_for_update().filter(user=user, item_id=drive, qty__gt=0).first()
+    if not inv:
+        return {"error": "You no longer have that drive. Choose another from your inventory."}, 409
+    inv.qty -= 1
+    inv.save(update_fields=["qty"])
+    chance = max(0.02, min(0.95, 0.4 * DRIVE_MULT[drive] * 0.6 * RARITY_RESIST.get(beast.rarity, 1.0)))
+    caught = random.random() < chance
+    if caught:
+        beast.status = "owned"
+        beast.expires_at = None
+        beast.save(update_fields=["status", "expires_at"])
+    message = f"Caught {beast.name}!" if caught else f"{beast.name} broke free. The sighting is still in your queue."
+    return {"ok": True, "caught": caught, "chance": round(chance, 2), "drive": drive,
+            "remaining": inv.qty, "message": message, "beast": _beast_row(beast)}, 200
+
+
+@transaction.atomic
+def _dismiss_sighting(user, beast_id):
+    beast = OwnedBeast.objects.select_for_update().filter(id=beast_id, user=user, status="wild").first()
+    if not beast:
+        return {"error": "That sighting is no longer in your discovery queue."}, 404
+    name = beast.name
+    beast.delete()
+    return {"ok": True, "dismissed": beast_id, "message": f"Dismissed {name} from your discovery queue."}, 200
 
 
 @login_required
 @require_POST
 def catch(request, beast_id):
-    beast = get_object_or_404(OwnedBeast, id=beast_id, user=request.user, status="wild")
-    if beast.expires_at and beast.expires_at <= timezone.now():
-        beast.delete()
-        return redirect("dashboard")
-    drive = request.POST.get("drive", "spark_drive")
-    inv = InventoryItem.objects.filter(user=request.user, item_id=drive, qty__gt=0).first()
-    if inv:
-        inv.qty -= 1
-        inv.save()
-        p = 0.4 * DRIVE_MULT.get(drive, 1.0) * (0.2 + 0.8 * 0.5) * RARITY_RESIST.get(beast.rarity, 1.0)
-        if random.random() < max(0.02, min(0.95, p)):
-            beast.status = "owned"
-            beast.expires_at = None
-            beast.save()
+    result, _ = _catch_sighting(request.user, beast_id, request.POST.get("drive", "spark_drive"))
+    request.session["discovery_msg"] = result.get("message") or result["error"]
+    return redirect("dashboard")
+
+
+@login_required
+@require_POST
+def dismiss_sighting(request, beast_id):
+    result, _ = _dismiss_sighting(request.user, beast_id)
+    request.session["discovery_msg"] = result.get("message") or result["error"]
     return redirect("dashboard")
 
 
@@ -1091,7 +1131,8 @@ def api_beasts(request):
     return JsonResponse({"ok": True, "account": node.user.first_name or node.user.username, "node": node.name,
                          "beasts": out, "wild": wild, "inventory": inv,
                          "buddy_beast_id": getattr(buddy, "beast_id", None),
-                         "subscribed": w.subscribed, "shards": w.shards, "cores": w.cores})
+                         "subscribed": w.subscribed, "shards": w.shards, "cores": w.cores,
+                         "catch_drives": _owned_drives(node.user)})
 
 
 def _beast_row(b):
@@ -1108,42 +1149,38 @@ def _beast_row(b):
     return row
 
 
-@csrf_exempt
-def api_catch(request):
-    """Catch a wild account sighting with a drive from your bag (node-token auth). Server rolls the
-    chance and consumes the drive - outcome isn't client-controlled. Part of the free base loop."""
+def _sighting_action(request, dismiss=False):
     node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
     if not node:
         return JsonResponse({"error": "bad node token"}, status=403)
     try:
-        data = json.loads(request.body.decode("utf-8"))
-    except Exception:
-        return JsonResponse({"error": "bad json"}, status=400)
-    beast = OwnedBeast.objects.filter(id=data.get("beast_id"), user=node.user, status="wild").first()
-    if not beast:
-        return JsonResponse({"error": "no such wild sighting"}, status=404)
-    if beast.expires_at and beast.expires_at <= timezone.now():
-        beast.delete()
-        return JsonResponse({"error": "that sighting expired", "expired": True}, status=410)
-    drive = str(data.get("drive") or "spark_drive")
-    with transaction.atomic():
-        inv = InventoryItem.objects.select_for_update().filter(user=node.user, item_id=drive, qty__gt=0).first()
-        if not inv:
-            return JsonResponse({"error": f"no {drive} in your bag"}, status=409)
-        inv.qty -= 1
-        inv.save()
-        p = 0.4 * DRIVE_MULT.get(drive, 1.0) * (0.2 + 0.8 * 0.5) * RARITY_RESIST.get(beast.rarity, 1.0)
-        chance = max(0.02, min(0.95, p))
-        caught = random.random() < chance
-        if caught:
-            beast.status = "owned"
-            beast.expires_at = None  # kept for good once caught
-            beast.save(update_fields=["status", "expires_at"])
-    pct = round(chance * 100)
-    msg = (f"Caught it! ({pct}% with the {drive.replace('_', ' ')})" if caught
-           else f"It broke free - {pct}% catch chance. Weaken it in battle or use a stronger drive.")
-    return JsonResponse({"ok": True, "caught": caught, "chance": round(chance, 2), "drive": drive,
-                         "remaining": inv.qty, "message": msg, "beast": _beast_row(beast)})
+        data = json.loads(request.body)
+        if not isinstance(data, dict):
+            raise ValueError()
+        beast_id = int(data["beast_id"])
+        drive = data.get("drive", "spark_drive")
+        if beast_id <= 0 or not isinstance(drive, str):
+            raise ValueError()
+    except (ValueError, TypeError, KeyError):
+        return JsonResponse({"error": "Provide a valid beast_id and drive."}, status=400)
+    result, status = _dismiss_sighting(node.user, beast_id) if dismiss else _catch_sighting(node.user, beast_id, drive)
+    response = JsonResponse(result, status=status)
+    response["Cache-Control"] = "private, no-store"
+    return response
+
+
+@csrf_exempt
+@require_POST
+def api_catch(request):
+    """Catch a queued sighting using an owned capture drive. Available on the free tier."""
+    return _sighting_action(request)
+
+
+@csrf_exempt
+@require_POST
+def api_dismiss_sighting(request):
+    """Dismiss only the caller's queued wild sighting; never an owned beast."""
+    return _sighting_action(request, dismiss=True)
 
 
 @csrf_exempt

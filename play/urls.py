@@ -55,6 +55,8 @@ urlpatterns = [
 
     path("api/account", views.api_account, name="api_account"),
     path("api/beasts", views.api_beasts, name="api_beasts"),
+    path("beast/<int:beast_id>/dismiss", views.dismiss_sighting, name="dismiss_sighting"),
+    path("api/sightings/dismiss", views.api_dismiss_sighting, name="api_dismiss_sighting"),
     path("api/catch", views.api_catch, name="api_catch"),
     path("api/nickname", views.api_nickname, name="api_nickname"),
     path("api/heal", views.api_heal, name="api_heal"),

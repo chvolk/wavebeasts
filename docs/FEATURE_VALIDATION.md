@@ -78,3 +78,18 @@ and exact QR decoding. Vision's current request revision returned no result for 
 on this runtime; the compatible request revision plus Core Image QR fallback passes. The public
 `wavebeast-ios-unsigned.ipa` contains version 0.12.2/build 21 and still requires personal signing.
 Physical camera capture, sensor readings and device installation were not exercised by the simulator.
+
+## 0.12.3 discovery controls
+
+Website and standalone Beasts cards allow dismissal of queued wild sightings. Standalone cards
+also catch directly through the account relay. Both interfaces list only capture drives with positive
+account inventory, including quantities; an empty bag shows a supply link and keeps dismissal available.
+After any attempt the standalone queue reloads authoritative stock. Dismissal consumes no inventory,
+and owned or another user's beasts cannot be dismissed. Catch and dismiss transactions lock the
+sighting; catching also locks inventory. Non-drive items and stale stock are rejected without spending.
+Expired catch controls disable independently of Dismiss.
+
+Validation: all 83 Django cases passed across the default suite (80 passed, 3 integration cases skipped)
+and the explicit real-engine integration run (3 passed); Go tests pass. Browser tests against real local
+Django/Go services verify website drive filtering, spending the last drive, refreshing all native cards,
+both dismissal routes, mobile layout and zero script errors. Only isolated fixture accounts were used.

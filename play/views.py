@@ -1345,6 +1345,7 @@ def api_buddy_slot(request):
     Wallet.objects.select_for_update().get(user=node.user)
     if "beast_id" in data and data["beast_id"] is None:
         b, _ = Buddy.objects.select_for_update().get_or_create(user=node.user)
+        buddymod.refresh(b)
         b.beast = None
         b.carrier = None
         b.last_event_at = None
@@ -1356,6 +1357,7 @@ def api_buddy_slot(request):
     if not beast:
         return JsonResponse({"error": "no such owned beast"}, status=404)
     b, _ = Buddy.objects.select_for_update().get_or_create(user=node.user)
+    buddymod.refresh(b)
     b.beast = beast
     b.carrier = node  # this device is now carrying the buddy
     b.slotted_at = timezone.now()

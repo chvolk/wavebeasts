@@ -44,11 +44,11 @@ class Buddy(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="buddy")
     beast = models.ForeignKey("OwnedBeast", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     carrier = models.ForeignKey("Node", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")  # which device carries it now (UX/anchor)
-    mood = models.IntegerField(default=60)          # 0-100
+    mood = models.FloatField(default=60)          # 0-100
     relationship = models.IntegerField(default=0)   # 0-100; 100 = "loves you"
-    hunger = models.IntegerField(default=60)        # vitals; higher is better, decay over time
-    energy = models.IntegerField(default=70)
-    cleanliness = models.IntegerField(default=80)
+    hunger = models.FloatField(default=60)        # vitals; higher is better, decay over time
+    energy = models.FloatField(default=70)
+    cleanliness = models.FloatField(default=80)
     last_care = models.JSONField(default=dict)      # {action: iso8601} for per-action cooldowns
     last_event_at = models.DateTimeField(null=True, blank=True)
     refreshed_at = models.DateTimeField(default=timezone.now)  # anchor for vital decay

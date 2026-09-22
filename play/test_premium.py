@@ -113,18 +113,21 @@ class PremiumWorkflowTests(TestCase):
     def test_buddy_all_actions_cooldowns_transfer_and_unslot(self):
         self.assertEqual(self.api('/api/buddy/slot', {'beast_id': self.bb.id}).status_code, 404)
         self.assertEqual(self.api('/api/buddy/slot', {'beast_id': self.ba.id}).status_code, 200)
-        for action in ['feed', 'play', 'rest', 'clean', 'train']:
-            with self.subTest(action=action):
-                self.assertEqual(self.api('/api/buddy/care', {'action': action}).status_code, 200)
-                self.assertEqual(self.api('/api/buddy/care', {'action': action}).status_code, 429)
-        self.ba.refresh_from_db(); self.assertGreater(self.ba.level, 1)
-        carrier = Node.objects.create(user=self.a, name='Second phone')
-        self.api('/api/buddy/slot', {'beast_id': self.ba.id}, carrier)
-        self.assertEqual(Buddy.objects.get(user=self.a).carrier_id, carrier.id)
-        self.assertEqual(self.api('/api/buddy/care', {'action':'feed'}, carrier).status_code, 429)
-        self.assertEqual(self.api('/api/buddy/slot', {'beast_id': None}).status_code, 200)
-        self.assertIsNone(Buddy.objects.get(user=self.a).beast_id)
-        self.assertEqual(self.api('/api/buddy').json()['events'], [])
+        now = timezone.now()
+        with patch('play.buddy.timezone.now', return_value=now) as clock:
+            for action in ['feed', 'play', 'rest', 'clean', 'train']:
+                with self.subTest(action=action):
+                    self.assertEqual(self.api('/api/buddy/care', {'action': action}).status_code, 200)
+                    self.assertEqual(self.api('/api/buddy/care', {'action': action}).status_code, 429)
+                    clock.return_value += timedelta(minutes={'feed': 2, 'play': 5, 'rest': 20, 'clean': 2, 'train': 0}[action])
+            self.ba.refresh_from_db(); self.assertGreater(self.ba.level, 1)
+            carrier = Node.objects.create(user=self.a, name='Second phone')
+            self.api('/api/buddy/slot', {'beast_id': self.ba.id}, carrier)
+            self.assertEqual(Buddy.objects.get(user=self.a).carrier_id, carrier.id)
+            self.assertEqual(self.api('/api/buddy/care', {'action':'feed'}, carrier).status_code, 429)
+            self.assertEqual(self.api('/api/buddy/slot', {'beast_id': None}).status_code, 200)
+            self.assertIsNone(Buddy.objects.get(user=self.a).beast_id)
+            self.assertEqual(self.api('/api/buddy').json()['events'], [])
 
     @patch('play.buddy.random.random', return_value=0.1)
     def test_buddy_away_rewards_are_paid_once(self, roll):

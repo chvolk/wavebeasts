@@ -3,6 +3,7 @@
 Everything here mutates the Buddy (and, for training/combat, the beast + wallet) on the server. The client
 never sends stats - it calls an action and renders whatever comes back - so the whole system is cheat-proof.
 """
+import math
 import random
 from datetime import timedelta
 
@@ -13,15 +14,31 @@ from django.utils.dateparse import parse_datetime
 # spammed to max instantly, so relationship (and its faster away-events) is earned over real time.
 CARE = {
     "feed":  (30, {"hunger": 35, "mood": 8}, 2),
-    "play":  (20, {"mood": 18, "energy": -12}, 3),
+    "play":  (20, {"mood": 18, "energy": -4}, 3),
     "rest":  (45, {"energy": 40, "mood": 6}, 1),
     "clean": (40, {"cleanliness": 45, "mood": 6}, 1),
-    "train": (60, {"energy": -20, "mood": 5}, 3),   # also grants XP to the beast (see apply_care)
+    "train": (60, {"energy": -10, "mood": 5}, 3),   # also grants XP to the beast (see apply_care)
 }
-VITAL_DECAY_PER_HOUR = {"hunger": 8, "energy": 6, "cleanliness": 5}
+ACTIVITY_MINUTES = {"feed": 2, "play": 5, "rest": 20, "clean": 2, "train": 10}
+REST_DECAY_MULTIPLIER = 0.25
+VITAL_DECAY_PER_HOUR = {"hunger": 8, "energy": 6, "cleanliness": 5, "mood": 2}
+
 TRAIN_XP = 40           # XP granted per training session
 EVENT_CAP = 6           # most away-events handed out in a single poll (bounds long absences)
 XP_CURVE_K = 15         # next-level XP = level**3 * K (matches the engine's train curve)
+
+
+def activity(buddy):
+    """The account's current exclusive activity, retained across devices and slot changes."""
+    now = timezone.now()
+    for action, minutes in ACTIVITY_MINUTES.items():
+        started = parse_datetime(buddy.last_care.get(action, "") or "")
+        if started:
+            ends = started + timedelta(minutes=minutes)
+            if ends > now:
+                return {"action": action, "ends_at": ends.isoformat(),
+                        "remaining_sec": math.ceil((ends - now).total_seconds())}
+    return None
 
 
 def clamp(v, lo=0, hi=100):
@@ -39,28 +56,32 @@ def event_interval_min(relationship):
 
 
 def refresh(buddy):
-    """Apply time-based vital decay and let mood drift toward the vitals. Mutates buddy (unsaved)."""
+    """Integrate fractional decay over awake/resting time, independently of polling frequency."""
     now = timezone.now()
-    hrs = max(0.0, (now - buddy.refreshed_at).total_seconds() / 3600.0)
-    if hrs <= 0:
+    seconds = max(0.0, (now - buddy.refreshed_at).total_seconds())
+    if not seconds:
         return
-    for k, rate in VITAL_DECAY_PER_HOUR.items():
-        setattr(buddy, k, clamp(getattr(buddy, k) - rate * hrs))
-    avg = (buddy.hunger + buddy.energy + buddy.cleanliness) / 3
-    buddy.mood = clamp(buddy.mood * 0.7 + avg * 0.3)
+    rest = parse_datetime(buddy.last_care.get("rest", "") or "")
+    resting = 0
+    if rest:
+        resting = max(0, (min(now, rest + timedelta(minutes=ACTIVITY_MINUTES["rest"]))
+                          - max(buddy.refreshed_at, rest)).total_seconds())
+    hours = (seconds - resting * (1 - REST_DECAY_MULTIPLIER)) / 3600
+    for key, rate in VITAL_DECAY_PER_HOUR.items():
+        setattr(buddy, key, max(0.0, getattr(buddy, key) - rate * hours))
     buddy.refreshed_at = now
 
 
 def care_cooldowns(buddy):
-    """Seconds remaining on each care action's cooldown (0 = ready)."""
+    """Effective waits include both each action's cadence and the shared activity lock."""
     now = timezone.now()
+    active = activity(buddy)
+    shared = active["remaining_sec"] if active else 0
     out = {}
     for action, (cd_min, _, _) in CARE.items():
         last = parse_datetime(buddy.last_care.get(action, "") or "")
-        rem = 0
-        if last:
-            rem = max(0, int(cd_min * 60 - (now - last).total_seconds()))
-        out[action] = rem
+        remaining = math.ceil(cd_min * 60 - (now - last).total_seconds()) if last else 0
+        out[action] = max(0, shared, remaining)
     return out
 
 
@@ -84,15 +105,13 @@ def apply_care(buddy, action):
     if not cfg:
         return {"error": "unknown_action"}
     refresh(buddy)
-    cd_min, effects, rel = cfg
+    _, effects, rel = cfg
     now = timezone.now()
-    last = parse_datetime(buddy.last_care.get(action, "") or "")
-    if last:
-        elapsed = (now - last).total_seconds()
-        if elapsed < cd_min * 60:
-            return {"error": "cooldown", "retry_after_sec": int(cd_min * 60 - elapsed)}
+    remaining = care_cooldowns(buddy)[action]
+    if remaining:
+        return {"error": "cooldown", "retry_after_sec": remaining}
     for k, dv in effects.items():
-        setattr(buddy, k, clamp(getattr(buddy, k) + dv))
+        setattr(buddy, k, max(0.0, min(100.0, getattr(buddy, k) + dv)))
     buddy.relationship = clamp(buddy.relationship + rel)
     buddy.last_care[action] = now.isoformat()
     result = {"ok": True, "action": action}
@@ -193,12 +212,21 @@ def state(buddy):
     return {
         "beast": beast_summary(buddy.beast),
         "carrier": ({"id": buddy.carrier_id, "name": buddy.carrier.name} if buddy.carrier_id else None),
-        "mood": buddy.mood,
+        "mood": clamp(buddy.mood),
         "relationship": buddy.relationship,
         "relationship_label": relationship_label(buddy.relationship),
-        "hunger": buddy.hunger,
-        "energy": buddy.energy,
-        "cleanliness": buddy.cleanliness,
+        "hunger": clamp(buddy.hunger),
+        "energy": clamp(buddy.energy),
+        "cleanliness": clamp(buddy.cleanliness),
         "event_interval_min": round(event_interval_min(buddy.relationship)),
         "cooldowns": care_cooldowns(buddy),
+        "activity": activity(buddy),
+        "care_options": {
+            action: {"duration_sec": ACTIVITY_MINUTES[action] * 60,
+                     "cooldown_sec": cfg[0] * 60, "effects": cfg[1],
+                     "relationship_gain": cfg[2],
+                     "xp_gain": TRAIN_XP if action == "train" else 0,
+                     "decay_multiplier": REST_DECAY_MULTIPLIER if action == "rest" else 1}
+            for action, cfg in CARE.items()
+        },
     }

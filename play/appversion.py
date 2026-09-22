@@ -2,6 +2,6 @@
 the app compares its installed versionCode against this and prompts to update. Keep VERSION_CODE in sync
 with android/app/build.gradle's versionCode in the wavebeast repo."""
 
-VERSION_CODE = 22
-VERSION_NAME = "0.12.3"
-NOTES = "Catch or dismiss queued discoveries directly in Beasts. Catch controls show only drives in your account inventory, with stock counts that refresh after each attempt."
+VERSION_CODE = 23
+VERSION_NAME = "0.12.4"
+NOTES = "One selected host now owns your currency, inventory and beasts across clients. Visible host selection, shared account shop and collection, no silent local fallback. Premium users can scan manually on the website with private browser-side camera hashing."

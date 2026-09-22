@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, pwa
+from . import views, pwa, scanner
 
 urlpatterns = [
     path("service-worker.js", pwa.service_worker, name="service_worker"),
@@ -25,6 +25,8 @@ urlpatterns = [
     path("billing/checkout", views.checkout, name="checkout"),
     path("billing/portal", views.billing_portal, name="billing_portal"),
     path("webhooks/stripe", views.stripe_webhook, name="stripe_webhook"),
+    path("scan/", scanner.page, name="scanner"),
+    path("api/browser/scan", scanner.scan, name="browser_scan"),
     path("me/", views.dashboard, name="dashboard"),
     path("me/<int:beast_id>/nickname", views.beast_nickname, name="beast_nickname"),
     path("beast/<int:beast_id>/catch", views.catch, name="catch"),
@@ -54,6 +56,8 @@ urlpatterns = [
     path("api/import", views.api_import, name="api_import"),
 
     path("api/account", views.api_account, name="api_account"),
+    path("api/beast/<int:beast_id>", views.api_beast, name="api_beast"),
+    path("api/train", views.api_train, name="api_train"),
     path("api/beasts", views.api_beasts, name="api_beasts"),
     path("beast/<int:beast_id>/dismiss", views.dismiss_sighting, name="dismiss_sighting"),
     path("api/sightings/dismiss", views.api_dismiss_sighting, name="api_dismiss_sighting"),

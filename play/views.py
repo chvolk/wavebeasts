@@ -832,6 +832,7 @@ def battle_fight(request):
 # ---- node snapshot ingest (token auth, rate limited) ---------------------------------------------
 
 @csrf_exempt
+@transaction.atomic
 def api_snapshot(request):
     if request.method != "POST":
         return JsonResponse({"error": "POST only"}, status=405)
@@ -839,14 +840,22 @@ def api_snapshot(request):
     node = Node.objects.filter(token=token).first()
     if not node:
         return JsonResponse({"error": "bad node token"}, status=403)
-    wait = node.seconds_until_ready()
-    if wait > 0:
-        return JsonResponse({"accepted": False, "error": "rate_limited", "retry_after": wait,
-                             "hint": "boost this node with cores to raise the rate"}, status=429)
+    _wallet(node.user)
+    Wallet.objects.select_for_update().get(user=node.user)
+    node = Node.objects.select_for_update().get(pk=node.pk)
     try:
         bundle = json.loads(request.body.decode("utf-8"))
     except Exception:
         return JsonResponse({"error": "bad json"}, status=400)
+    return submit_snapshot(request, node, bundle)
+
+
+def submit_snapshot(request, node, bundle):
+    """Shared account-authoritative roll for API nodes and the manual browser scanner."""
+    wait = node.seconds_until_ready()
+    if wait > 0:
+        return JsonResponse({"accepted": False, "error": "rate_limited", "retry_after": wait,
+                             "hint": "boost this node with cores to raise the rate"}, status=429)
     try:
         # Server-authoritative roll: a per-submission random nonce the client can't predict, so the
         # resulting stats can't be modded or ground out. Species stays deterministic from the bundle.
@@ -1128,12 +1137,67 @@ def api_beasts(request):
     inv = {i.item_id: i.qty for i in node.user.items.filter(qty__gt=0)}
     buddy = getattr(node.user, "buddy", None)
     w = _wallet(node.user)
-    return JsonResponse({"ok": True, "account": node.user.first_name or node.user.username, "node": node.name,
+    response = JsonResponse({"ok": True, "account": node.user.first_name or node.user.username, "node": node.name,
                          "beasts": out, "wild": wild, "inventory": inv,
                          "buddy_beast_id": getattr(buddy, "beast_id", None),
                          "subscribed": w.subscribed, "shards": w.shards, "cores": w.cores,
                          "catch_drives": _owned_drives(node.user)})
 
+
+    response["Cache-Control"] = "private, no-store"
+    return response
+
+
+@csrf_exempt
+@require_GET
+def api_beast(request, beast_id):
+    node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
+    if not node:
+        return JsonResponse({"error": "bad node token"}, status=403)
+    b = node.user.beasts.filter(id=beast_id, status="owned").first()
+    if not b:
+        return JsonResponse({"error": "no such owned beast"}, status=404)
+    row = _beast_row(b)
+    ind = dict(b.individual_json or {})
+    ind["id"] = str(b.id)
+    row.update({"id": str(b.id), "species": b.species_json, "individual": ind,
+                "xp": ind.get("xp", 0), "next": b.level ** 3 * 15,
+                "moves": ind.get("moves", []), "tribe": (b.species_json or {}).get("tribe", "")})
+    response = JsonResponse(row)
+    response["Cache-Control"] = "private, no-store"
+    return response
+
+
+@csrf_exempt
+@require_POST
+@transaction.atomic
+def api_train(request):
+    node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
+    if not node:
+        return JsonResponse({"error": "bad node token"}, status=403)
+    try:
+        data = json.loads(request.body)
+        item = data["item_id"]
+        xp = {"kibble": 120, "feast": 500}[item]
+        beast_id = int(data["beast_id"])
+    except (ValueError, TypeError, KeyError):
+        return JsonResponse({"error": "Provide a beast_id and a food item"}, status=400)
+    Wallet.objects.select_for_update().get(user=node.user)
+    b = node.user.beasts.select_for_update().filter(id=beast_id, status="owned").first()
+    if not b:
+        return JsonResponse({"error": "no such owned beast"}, status=404)
+    stock = InventoryItem.objects.select_for_update().filter(user=node.user, item_id=item, qty__gt=0).first()
+    if not stock:
+        return JsonResponse({"error": "no food in your inventory"}, status=409)
+    stock.qty -= 1
+    stock.save(update_fields=["qty"])
+    ind = dict(b.individual_json or {})
+    ind["xp"] = ind.get("xp", 0) + xp
+    levels = buddymod._level_up(ind)
+    b.individual_json = ind
+    b.level = ind.get("level", b.level)
+    b.save(update_fields=["individual_json", "level"])
+    return JsonResponse({"ok": True, "beast": _beast_row(b), "xp_gained": xp, "levels_gained": levels})
 
 def _beast_row(b):
     ind = b.individual_json or {}

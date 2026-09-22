@@ -1,0 +1,26 @@
+{% extends 'base.html' %}{% load static %}
+{% block title %}Scanner · WaveBeasts{% endblock %}
+{% block content %}
+<style>#browser-scanner [hidden]{display:none!important}</style>
+<div class="section-label">PREMIUM / MANUAL SCANNER</div>
+<h1>A beast in your browser.</h1>
+<p class="muted">Host: <strong>{{ request.get_host }}</strong> · {{ request.user.email|default:request.user.username }}. Scans use this account’s wallet and collection.</p>
+{% if not premium %}
+<div class="card"><h2>Unlock browser scanning</h2><p>Premium lets you scan codes or turn camera images into signals right here. Nodes and standalone local play remain available separately.</p><a class="btn" href="/billing/">Get Premium</a></div>
+{% else %}
+<div id="browser-scanner" class="card" data-cooldown="{{ cooldown }}">
+  <form id="scan-form">{% csrf_token %}
+    <label for="scan-code">Text or code · one input</label><input id="scan-code" maxlength="4096" autocomplete="off" placeholder="Type or paste a code">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0"><button class="btn sec" type="button" id="open-barcode">Scan QR / barcode</button><button class="btn sec" type="button" id="open-photo">Capture image</button><button class="btn sec" type="button" id="pick-photo">Choose image</button><input type="file" id="photo-file" accept="image/*" hidden></div>
+    <div id="camera-box" hidden><video id="camera" autoplay muted playsinline style="width:100%;max-height:380px;object-fit:contain;background:#000"></video><p id="camera-status" role="status"></p><button class="btn" type="button" id="capture-photo">Hash this image</button><button class="btn sec" type="button" id="close-camera">Close camera</button></div>
+    <p id="staged-camera" aria-live="polite">No camera input yet.</p><button class="btn sec sm" type="button" id="clear-camera" hidden>Remove camera input</button>
+    <p class="muted">Images stay on your device. Your browser sends only a small visual hash, six colors and image dimensions, or the decoded barcode text. One camera input at a time.</p>
+    <button class="btn sec sm" type="button" id="enable-sensors">Add available orientation readings</button><p id="sensor-status" class="muted">Optional · uses actual browser sensor readings when available.</p>
+    <button class="btn" id="submit-scan" type="submit" style="margin-top:16px">SCAN NOW</button><p id="scan-status" role="status" aria-live="polite"></p>
+  </form>
+</div>
+<div id="scan-result" class="card" hidden style="margin-top:20px"></div>
+<p class="muted">Each scan is manual. This browser scanner shares one cooldown across your tabs; background scanning is for nodes and apps.</p>
+<script src="{% static 'vendor/zxing-0.21.3.min.js' %}" defer></script><script src="{% static 'browser-scanner.js' %}" defer></script>
+{% endif %}
+{% endblock %}

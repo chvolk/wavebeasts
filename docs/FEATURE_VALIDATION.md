@@ -97,3 +97,35 @@ both dismissal routes, mobile layout and zero script errors. Only isolated fixtu
 Android 0.12.3/build 22 assembled successfully. iOS device compilation and both simulator tests
 passed in [run 35673199889](https://github.com/chvolk/wavebeast/actions/runs/35673199889);
 the unsigned IPA metadata was verified as 0.12.3/build 22 before publication.
+
+## 0.12.4 selected-host authority and manual Premium web scanner
+
+The engine's standard gameplay routes now use the selected account/engine for wallet,
+inventory, collection, purchases, catches, training and scans. `/host` identifies the authority;
+`/state` returns its combined state. Existing local saves remain intact and are never silently
+used on an account/network failure. The shared GUI shows/change hosts and refreshes visible state.
+Omnitool now defaults to wavebeasts.com and explicitly supports a self-hosted URL or the standalone
+app's selected host. Its scanner, bag and collection share one client selection.
+
+Premium `/scan/` uses camera permission, local perceptual image hashing/palette extraction, QR/barcode
+recognition (vendored ZXing fallback), optional actual orientation readings and manual submission.
+No image endpoint, image upload or automatic browser scanning was added. Session auth + CSRF + the
+paid gate protect submission; a single browser node shares cooldown across tabs and normal node quota.
+
+Validation:
+- Django: 89 discovered, 86 passed, 3 opt-in skipped; those 3 real-Go integration cases separately passed.
+- Go: full tests and vet passed, including shared remote stores, linked account purchases/scans,
+  preserving the local database, failed host replacement and no fallback on outages/auth/payment errors.
+- Flutter: changed-file analysis clean; 20 isolated client/Buddy regression tests passed. A real Dart
+  client switched between direct account access and the engine's API and observed identical currency,
+  drives, beasts and cooldown after mutations in both directions.
+- Playwright: the shared GUI bought supplies, dismissed sightings and trained a beast; two linked
+  engines agreed with account state. Mobile layout and JS-error checks passed.
+- Playwright: a chosen image emitted only a compact hash/palette/dimensions JSON payload; a real QR
+  camera fixture decoded with the native detector disabled, displayed code grabbed and stopped all
+  tracks. Late camera permission after cancellation stopped its tracks. No automatic submissions.
+- Real browser session/CSRF submission used the Go resolver and shared the resulting wallet with the
+  engine; another browser tab saw the same cooldown.
+
+Android standalone 0.12.4/build 23 and Omnitool build 0921-1913 compiled successfully. Physical device
+camera/sensor acceptance remains outside these browser/API checks. iOS CI result recorded below.

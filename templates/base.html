@@ -176,6 +176,7 @@
   <a href="{% if user.is_authenticated %}/me/{% else %}/{% endif %}" class="brand wordmark"><img class="brand-icon" src="{% static 'brand/mark.svg' %}" alt="">WAVEBEASTS</a>
   {% if user.is_authenticated %}
   <div class="links">
+    <a href="/scan/" class="{% if nav == 'scan' %}active{% endif %}">Scan{% if not wb_wallet.subscribed %} ✦{% endif %}</a>
     <a href="/me/" class="{% if nav == 'beastiary' %}active{% endif %}">Beastiary</a>
     <a href="/shop/" class="{% if nav == 'shop' %}active{% endif %}">Shop</a>
     <a href="/trade/" class="{% if nav == 'trade' %}active{% endif %}">Trade</a>
@@ -185,8 +186,8 @@
     <a href="/download/" class="{% if nav == 'download' %}active{% endif %}">Download</a>
   </div>
   <div class="right">
-    <span class="chip silver">Shards <b>{{ wb_wallet.shards }}</b></span>
-    <span class="chip acc">Cores <b>{{ wb_wallet.cores }}</b></span>
+    <span class="chip silver">Shards <b data-wallet="shards">{{ wb_wallet.shards }}</b></span>
+    <span class="chip acc">Cores <b data-wallet="cores">{{ wb_wallet.cores }}</b></span>
     <a class="btn {% if wb_wallet.subscribed %}sec {% endif %}sm" href="/billing/">{% if wb_wallet.subscribed %}Premium{% else %}Upgrade{% endif %}</a>
     {% if clerk_pk %}<div id="clerk-userbtn" style="display:flex;align-items:center"></div>
     <form method="post" action="/logout/" id="clerk-signout-fallback" style="display:none;margin:0">{% csrf_token %}<button class="btn sec sm" type="submit">Sign out</button></form>

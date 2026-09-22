@@ -315,23 +315,19 @@ def beast_filter_json(beast):
 
 @login_required
 def dashboard(request):
-    _cull_wilds(request.user)  # hide expired/overflow sightings on the web too
-    beasts = list(request.user.beasts.all())
+    beasts = list(request.user.beasts.filter(status="owned"))
     for beast in beasts:
         beast.display_hp = _hp_now(beast.individual_json or {})
         beast.filter_json = beast_filter_json(beast)
     listed_ids = set(TradeListing.objects.filter(user=request.user, is_open=True).values_list("beast_id", flat=True))
     team = _wallet(request.user).team_ids or []
     return render(request, "beastiary.html", {
-        "owned": [b for b in beasts if b.status == "owned"],
-        "wild": [b for b in beasts if b.status == "wild"],
+        "owned": beasts,
         "wallet": _wallet(request.user),
         "items": list(request.user.items.filter(qty__gt=0)),
         "listed_ids": listed_ids,
         "team": team,
         "nav": "beastiary",
-        "catch_drives": _owned_drives(request.user),
-        "discovery_msg": request.session.pop("discovery_msg", ""),
     })
 
 
@@ -382,7 +378,7 @@ def _dismiss_sighting(user, beast_id):
 def catch(request, beast_id):
     result, _ = _catch_sighting(request.user, beast_id, request.POST.get("drive", "spark_drive"))
     request.session["discovery_msg"] = result.get("message") or result["error"]
-    return redirect("dashboard")
+    return redirect("/scan/#scan-finds")
 
 
 @login_required
@@ -390,7 +386,7 @@ def catch(request, beast_id):
 def dismiss_sighting(request, beast_id):
     result, _ = _dismiss_sighting(request.user, beast_id)
     request.session["discovery_msg"] = result.get("message") or result["error"]
-    return redirect("dashboard")
+    return redirect("/scan/#scan-finds")
 
 
 def sprite(request, beast_id):

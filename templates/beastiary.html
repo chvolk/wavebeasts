@@ -41,34 +41,6 @@
 <div class="card muted">No beasts caught yet. Add a node and start sweeping, or play the standalone app.</div>
 {% endif %}
 
-{% if discovery_msg %}<div class="shop-feedback" role="status">{{ discovery_msg }}</div>{% endif %}
-{% if wild %}
-<div class="section-label">Wild sightings · catch them · {{ wild|length }}</div>
-<div class="beasts" data-beast-list>
-  {% for b in wild %}
-  <div class="beast" data-wild-card data-beast="{{ b.filter_json }}">
-    {% if b.shiny %}<span class="shiny">SHINY</span>{% endif %}
-    <div class="stage" style="opacity:.85"><img src="/sprite/{{ b.id }}.png" alt="" loading="lazy"></div>
-    <div class="nm">{{ b.name }}</div>
-    <div class="ty">{{ b.types_display }}</div>
-    <span class="tag rt-{{ b.rarity }}">{{ b.rarity }}</span>
-    {% if b.expires_at %}<div class="sighting-expiry" data-expires-in="{{ b.expires_in }}" data-expiry-duration="{{ b.expiry_duration }}">
-      <div class="expiry-label"><span>TIME LEFT</span><b data-expiry-text>{{ b.expires_label }}</b></div>
-      <div class="expiry-track" role="progressbar" aria-label="Sighting time remaining" aria-valuemin="0" aria-valuemax="{{ b.expiry_duration }}" aria-valuenow="{{ b.expires_in }}"><i></i></div>
-    </div>{% endif %}
-    {% if catch_drives %}<form method="post" data-catch-form action="/beast/{{ b.id }}/catch" class="stack" style="margin-top:8px;gap:6px">{% csrf_token %}
-      <select name="drive" aria-label="Drive for {{ b.name }}" class="grow" style="padding:7px">
-        {% for drive in catch_drives %}<option value="{{ drive.item_id }}">{{ drive.name }} ×{{ drive.qty }}</option>{% endfor %}
-      </select>
-      <button class="btn sm" type="submit">Throw</button>
-    </form>{% else %}<p class="muted" style="font-size:12px">No capture drives in your inventory. <a href="/shop/">Get supplies ↗</a></p>{% endif %}
-    <form method="post" action="/beast/{{ b.id }}/dismiss" style="margin-top:10px">{% csrf_token %}
-      <button class="btn sec sm" type="submit">Dismiss</button>
-    </form>
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
 </section><script src="{% static 'brand/collection.js' %}" defer></script>
-<script src="{% static 'brand/sightings.js' %}" defer></script>
+
 {% endblock %}

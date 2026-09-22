@@ -200,3 +200,19 @@ Engine source commit: `3b14442`; iOS build/test run: `35764448423`.
 The site increments its Android update manifest to build 29 and busts the Docker resolver cache
 with `ENGINE_REV=2026-09-22-discovery-gym-0.12.10`. Go tests and 30 focused Django checks passed
 again for the release. Production deployment verification is recorded in the release follow-up.
+
+## Website Scan ownership split (2026-09-22)
+
+Scan now owns pending sightings: sprite cards, rarity/type/level, source, expiry, owned-drive capture
+and dismissal are all on `/scan/`. Capture and dismissal return to Scan; successful captures move
+the beast into the owned-only Beastiary. Existing free-account sighting actions remain accessible;
+manual browser scanning and the resource history remain Premium.
+
+Beasts use server-side pages of 20 with filters/sorting applied before pagination and preserved in
+page links. Resources have a separate scrollable table of the latest 100 resource-only snapshots,
+with source and date ordering; beast/empty scan log entries are excluded. Manual scan result links
+stay on Scan and reload its finds rather than navigating to Beastiary.
+
+Validation: 106 Django cases (103 default plus three separately passing real-resolver integration
+cases); Chromium at 390px verifies 20-card pages, filtered page links, catch/dismiss navigation,
+owned-only collection, table scrolling, no horizontal overflow and no JavaScript errors.

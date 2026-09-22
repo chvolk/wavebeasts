@@ -11,18 +11,38 @@ from .models import Node, Wallet, Snapshot
 
 @login_required
 def page(request):
-    from .views import _wallet, _cull_wilds, beast_filter_json
+    from django.core.paginator import Paginator
+    from urllib.parse import urlencode
+    from .views import _wallet, _cull_wilds, beast_filter_json, _owned_drives
     wallet = _wallet(request.user)
     node = request.user.nodes.filter(kind='browser').first()
-    finds, snapshots = [], []
-    if wallet.subscribed:
-        _cull_wilds(request.user)
-        finds = list(request.user.beasts.filter(node__isnull=False).select_related("node")[:100])
-        for beast in finds:
-            beast.filter_json = beast_filter_json(beast)
-        snapshots = list(Snapshot.objects.filter(node__user=request.user).select_related('node').order_by('-at', '-id')[:100])
-    response = render(request, 'scanner.html', {'nav': 'scan', 'premium': wallet.subscribed,
-                                               'cooldown': node.seconds_until_ready() if node else 0, 'finds': finds, 'snapshots': snapshots})
+    _cull_wilds(request.user)
+    finds = list(request.user.beasts.filter(status='wild').select_related('node'))
+    rarities = ['common', 'uncommon', 'rare', 'epic', 'legendary']
+    types = ['ember', 'tide', 'leaf', 'spark', 'stone', 'gale', 'frost', 'shade', 'lumen']
+    filters = {k: request.GET.get(k, '') for k in ['search', 'rarity', 'type', 'sort']}
+    finds = [b for b in finds if
+             (not filters['search'] or filters['search'].lower() in b.name.lower()) and
+             (not filters['rarity'] or b.rarity == filters['rarity']) and
+             (not filters['type'] or filters['type'] in (b.species_json or {}).get('types', []))]
+    sort_keys = {'rarity': lambda b: -rarities.index(b.rarity) if b.rarity in rarities else 1,
+                 'type': lambda b: b.types_display, 'level': lambda b: -b.level,
+                 'name': lambda b: b.name.lower()}
+    if filters['sort'] in sort_keys:
+        finds.sort(key=sort_keys[filters['sort']])
+    page = Paginator(finds, 20).get_page(request.GET.get('page'))
+    for beast in page:
+        beast.filter_json = beast_filter_json(beast)
+    snapshots = list(Snapshot.objects.filter(node__user=request.user, outcome='resource')
+                     .select_related('node').order_by('-at', '-id')[:100]) if wallet.subscribed else []
+    response = render(request, 'scanner.html', {
+        'nav': 'scan', 'premium': wallet.subscribed,
+        'cooldown': node.seconds_until_ready() if node else 0,
+        'finds': page.object_list, 'find_page': page, 'snapshots': snapshots,
+        'filters': filters, 'rarities': rarities, 'types': types,
+        'page_query': urlencode(filters), 'catch_drives': _owned_drives(request.user),
+        'discovery_msg': request.session.pop('discovery_msg', ''),
+    })
     response['Cache-Control'] = 'private, no-store'
     return response
 

@@ -15,7 +15,7 @@ class SightingTests(TestCase):
         self.client.force_login(self.user)
 
     def test_page_and_api_expose_same_expiry(self):
-        page=self.client.get('/me/')
+        page=self.client.get('/scan/')
         self.assertContains(page,'data-expires-in=')
         self.assertContains(page,'data-expiry-duration=')
         self.assertContains(page,'brand/sightings.js')
@@ -33,7 +33,7 @@ class SightingTests(TestCase):
 
     def test_legacy_sighting_receives_original_day_deadline(self):
         self.beast.expires_at=None;self.beast.save()
-        self.client.get('/me/')
+        self.client.get('/scan/')
         self.beast.refresh_from_db()
         self.assertEqual(self.beast.expires_at,self.beast.caught_at+timedelta(days=1))
 
@@ -41,7 +41,7 @@ class SightingTests(TestCase):
         InventoryItem.objects.create(user=self.user,item_id='pulse_drive',qty=2)
         InventoryItem.objects.create(user=self.user,item_id='nova_drive',qty=0)
         InventoryItem.objects.create(user=self.user,item_id='potion',qty=4)
-        page=self.client.get('/me/')
+        page=self.client.get('/scan/')
         self.assertContains(page,'<option value="pulse_drive">Pulse Drive ×2</option>',html=True)
         self.assertNotContains(page,'<option value="spark_drive">')
         self.assertNotContains(page,'<option value="nova_drive">')
@@ -50,7 +50,7 @@ class SightingTests(TestCase):
         self.assertEqual(row['catch_drives'],[{'item_id':'pulse_drive','name':'Pulse Drive','qty':2}])
 
     def test_no_drives_keeps_dismiss_available(self):
-        page=self.client.get('/me/')
+        page=self.client.get('/scan/')
         self.assertContains(page,'No capture drives in your inventory.')
         self.assertContains(page,f'/beast/{self.beast.id}/dismiss')
         self.assertNotContains(page,'data-catch-form')

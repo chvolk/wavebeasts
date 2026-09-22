@@ -93,3 +93,7 @@ Validation: all 83 Django cases passed across the default suite (80 passed, 3 in
 and the explicit real-engine integration run (3 passed); Go tests pass. Browser tests against real local
 Django/Go services verify website drive filtering, spending the last drive, refreshing all native cards,
 both dismissal routes, mobile layout and zero script errors. Only isolated fixture accounts were used.
+
+Android 0.12.3/build 22 assembled successfully. iOS device compilation and both simulator tests
+passed in [run 35673199889](https://github.com/chvolk/wavebeast/actions/runs/35673199889);
+the unsigned IPA metadata was verified as 0.12.3/build 22 before publication.

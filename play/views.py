@@ -1117,7 +1117,11 @@ def api_account(request):
         "shards": w.shards, "cores": w.cores,
         "beasts": user.beasts.filter(status="owned").count(), "nodes": user.nodes.count(),
         "node_limit": PAID_NODE_LIMIT if w.subscribed else FREE_NODE_LIMIT,
-    }, "node": {"name": node.name, "kind": node.kind, "next_snapshot_in": node.seconds_until_ready()}})
+    }, "node": {"name": node.name, "kind": node.kind, "next_snapshot_in": node.seconds_until_ready()},
+        "recent_snapshots": [{"id": item.id, "node_name": item.node.name,
+            "at": item.at.isoformat(), "outcome": item.outcome, "detail": item.detail}
+            for item in Snapshot.objects.filter(node__user=user).select_related("node")
+                .order_by("-at", "-id")[:20]] if w.subscribed else []})
     response["Cache-Control"] = "private, no-store"
     return response
 

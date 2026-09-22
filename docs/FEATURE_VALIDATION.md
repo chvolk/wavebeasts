@@ -129,3 +129,10 @@ Validation:
 
 Android standalone 0.12.4/build 23 and Omnitool build 0921-1913 compiled successfully. Physical device
 camera/sensor acceptance remains outside these browser/API checks. iOS CI result recorded below.
+
+
+Final compatibility patch: **0.12.5/build 24** preserves the existing `/buddy` `individual_id`
+contract through the selected account, including explicit unslot and malformed-input rejection.
+Its regression also checks that `/beast/release` retains the distinct `id` request field.
+Go tests/vet and rebuilt Android + six desktop targets passed. Both real QR and Code 128 barcode
+camera fixtures decoded without native BarcodeDetector support. Updated binaries replace 0.12.4.

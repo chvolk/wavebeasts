@@ -136,3 +136,13 @@ contract through the selected account, including explicit unslot and malformed-i
 Its regression also checks that `/beast/release` retains the distinct `id` request field.
 Go tests/vet and rebuilt Android + six desktop targets passed. Both real QR and Code 128 barcode
 camera fixtures decoded without native BarcodeDetector support. Updated binaries replace 0.12.4.
+
+Final iOS CI run **35679500246** at engine commit `913c7da` passed device compilation and
+both simulator tests (including the host-chooser visibility assertion). Published unsigned IPA
+is 0.12.5/build 24, SHA-256 `7ebdf3ad9c6a1197c1dbec0932557050bbdb41185eb6c9e27366a77776921957`.
+Final Android APK SHA-256 is `8e2806578ffa09a818016ef62dd428ac533ab7fee43cf6cb68cf03b8acfe981f`.
+Final Omnitool build **0921-1924** includes host-specific offline instructions and protected engine
+sprite requests. Its published updater manifest includes size and checksum. The final engine's
+legacy Buddy slot/read/unslot and beast release also passed against real disposable Django data.
+Railway confirmed the application deployment successful, and the live scanner JavaScript matched
+source exactly. All test accounts/data were isolated; production wallets and inventories were untouched.

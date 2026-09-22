@@ -146,3 +146,57 @@ sprite requests. Its published updater manifest includes size and checksum. The 
 legacy Buddy slot/read/unslot and beast release also passed against real disposable Django data.
 Railway confirmed the application deployment successful, and the live scanner JavaScript matched
 source exactly. All test accounts/data were isolated; production wallets and inventories were untouched.
+
+## Scan discovery and gym overhaul (2026-09-22, local changes)
+
+Premium Scan now lists the latest 100 available node/app/browser beast discoveries and 100
+submission records, scoped to the signed-in account with private/no-store responses. Beast search,
+rarity/type filters and newest/rarity/level/type/name ordering are available on Scan and Beastiary;
+activity filters by device/outcome and sorts newest/oldest. The standalone app filters before scan
+pagination and now includes rarity, level and shiny badges on account sightings.
+
+The Go resolver owns gym scaling and combat. Gyms require a complete three-beast opposing team;
+levels track the strongest selected beast, later slots gain `slot * level / 40` levels (cap 100), and
+IVs are 16. Seeded speed ties remove the fixed challenger advantage, and a 0.65 damage multiplier
+reduces burst damage across shared combat. No persistent-health mechanic was added.
+
+Structured events identify attacker/defender by side and slot, with damage, remaining/max HP and
+fainting. Site and standalone replays use actual rendered beast sprites, attack/hit animations,
+then HP updates and log rows, revealing the verdict last. Skip and reduced-motion are supported.
+Full sprite payloads are requested only for gym/interactive replays, not routine ladder/scan battles.
+Deploy the updated resolver alongside the site to enable the new replay contract.
+
+Validation:
+- 103 Django tests: 100 passed in the default suite; three opt-in real-engine tests separately passed.
+- Full Go suite and vet passed; native engine builds. Tests cover deterministic replay/HP consistency,
+  opponent scaling without modifying source individuals, incomplete-gym rejection and sprite payloads.
+- 120 seeded balance fixtures at levels 1/10/30/65: damage taken in all fights; full teams won 53/120,
+  solo beasts won 0/120; average 14.8 rounds. These are synthetic fixtures, not live-player telemetry.
+- Chromium at 390px against disposable Django/Go services: private scan feed, rarity sorting/filtering,
+  name search, no horizontal overflow, account rarity badges, actual site/app gym sprites, animation
+  before log rows, delayed verdict, skip and battle-button recovery; no script errors. Standalone
+  collection/detail fixtures were supplied through intercepted API responses; battles used the real
+  Go resolver. Production accounts, inventory and databases were not used.
+- Shared brand copies match. No commit, push, production deployment or native APK/IPA release made.
+
+Native build follow-up: the standalone Android preview compiled successfully on Aphrodite in
+`~/dev/wavebeast-discovery-preview`, isolated from the regular build checkout. Artifact:
+`../wavebeast/dist/wavebeast-discovery-preview.apk` (13,485,402 bytes; SHA-256
+`a9e6f3f156ad2c224ea11666bdcf4e5c7a284d9f76120a48e76cc4d2629fc7be`). Android
+`apksigner verify` passed; remote/local hashes match. ZIP integrity, ARM64/ARMv7 ELF architectures,
+and inclusion of the new filters/replay UI in both bundled engines were verified. This preview
+retains version 0.12.9/build 28; release versioning and physical-phone acceptance remain pending.
+The site resolver also cross-compiled to `../wavebeast/dist/wavebeast-linux-amd64-discovery-preview`
+(SHA-256 `cdb208a90c38dd38d569f5a7bf77b69ce87dc8251bce157e6a2adb8e26498220`).
+Artifacts are local; public downloads and production services remain unchanged.
+
+## 0.12.10 release (2026-09-22)
+
+User authorized publishing the app and live site. Android version 0.12.10/build 29 was rebuilt,
+signature-verified and published with the six desktop/server engine binaries. APK SHA-256:
+`1071e444faf495a8a8771bf8ce9dcf2f1122670b9996a0727dfde5bf5833ed83`.
+Linux amd64 resolver SHA-256: `cdb208a90c38dd38d569f5a7bf77b69ce87dc8251bce157e6a2adb8e26498220`.
+Engine source commit: `3b14442`; iOS build/test run: `35764448423`.
+The site increments its Android update manifest to build 29 and busts the Docker resolver cache
+with `ENGINE_REV=2026-09-22-discovery-gym-0.12.10`. Go tests and 30 focused Django checks passed
+again for the release. Production deployment verification is recorded in the release follow-up.

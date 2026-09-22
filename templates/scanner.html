@@ -21,6 +21,18 @@
 </div>
 <div id="scan-result" class="card" hidden style="margin-top:20px"></div>
 <p class="muted">Each scan is manual. This browser scanner shares one cooldown across your tabs; background scanning is for nodes and apps.</p>
+<section id="scan-finds" data-collection>
+<h2>Scan finds</h2><p class="muted">Latest 100 discoveries from your linked nodes, apps and browser. <a href="/me/">Open Beastiary to catch or manage beasts</a>.</p>
+<div data-controls></div><p data-filter-count role="status"></p>
+<div class="beasts" data-beast-list>{% for b in finds %}
+<div class="beast" data-beast="{{ b.filter_json }}"><span class="lv">Lv {{ b.level }}</span><div class="stage"><img src="/sprite/{{ b.id }}.png" alt="" loading="lazy"></div>
+<div class="nm">{{ b.individual_json.nickname|default:b.name }}</div><div class="ty">{{ b.types_display }}</div><span class="tag rt-{{ b.rarity }}">{{ b.rarity }}</span>{% if b.shiny %}<span class="shiny">SHINY</span>{% endif %}
+<p class="muted">{{ b.node.name }} · {{ b.status }}<br>{{ b.caught_at|date:"M j, H:i" }}</p></div>
+{% empty %}<p class="muted">No scan finds yet. Linked nodes and apps will appear here when they discover beasts.</p>{% endfor %}</div></section>
+<h2>Scan activity</h2><p class="muted">Latest 100 submissions across your devices, including resources and empty scans.</p>
+<div class="collection-controls"><label>Source<select id="feed-source"><option value="">All devices</option></select></label><label>Outcome<select id="feed-outcome"><option value="">All outcomes</option><option>beast</option><option>resource</option><option>nothing</option></select></label><label>Order<select id="feed-order"><option value="new">Newest first</option><option value="old">Oldest first</option></select></label></div>
+<div id="scan-feed" style="max-height:420px;overflow:auto">{% for entry in snapshots %}<div class="card" data-source="{{ entry.node.name }}" data-outcome="{{ entry.outcome }}"><b>{{ entry.node.name }}</b> · {{ entry.at|date:"M j, H:i" }}<p>{{ entry.detail|default:entry.outcome }}</p></div>{% empty %}<p>No submissions yet.</p>{% endfor %}</div><p id="feed-count" role="status"></p>
+<script src="{% static 'brand/collection.js' %}" defer></script><script src="{% static 'scan-feed.js' %}" defer></script>
 <script src="{% static 'vendor/zxing-0.21.3.min.js' %}" defer></script><script src="{% static 'browser-scanner.js' %}" defer></script>
 {% endif %}
 {% endblock %}

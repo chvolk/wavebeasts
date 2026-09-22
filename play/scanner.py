@@ -7,15 +7,22 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
-from .models import Node, Wallet
+from .models import Node, Wallet, Snapshot
 
 @login_required
 def page(request):
-    from .views import _wallet
+    from .views import _wallet, _cull_wilds, beast_filter_json
     wallet = _wallet(request.user)
     node = request.user.nodes.filter(kind='browser').first()
+    finds, snapshots = [], []
+    if wallet.subscribed:
+        _cull_wilds(request.user)
+        finds = list(request.user.beasts.filter(node__isnull=False).select_related("node")[:100])
+        for beast in finds:
+            beast.filter_json = beast_filter_json(beast)
+        snapshots = list(Snapshot.objects.filter(node__user=request.user).select_related('node').order_by('-at', '-id')[:100])
     response = render(request, 'scanner.html', {'nav': 'scan', 'premium': wallet.subscribed,
-                                               'cooldown': node.seconds_until_ready() if node else 0})
+                                               'cooldown': node.seconds_until_ready() if node else 0, 'finds': finds, 'snapshots': snapshots})
     response['Cache-Control'] = 'private, no-store'
     return response
 

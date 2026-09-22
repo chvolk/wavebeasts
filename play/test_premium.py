@@ -179,6 +179,25 @@ class PremiumWorkflowTests(TestCase):
             with self.subTest(path=path):self.assertEqual(self.client.get(path).status_code,405)
 
 
+    @patch('play.views._gym_team', return_value=[])
+    @patch('play.resolver.battle_auto')
+    def test_incomplete_gym_cannot_award_free_win(self, resolve, gym):
+        self.client.post('/battle/team', {'beast_ids':[self.ba.id]})
+        response=self.client.post('/battle/fight', follow=True)
+        self.assertContains(response,'Could not assemble a full gym')
+        resolve.assert_not_called()
+        self.assertFalse(BattleRecord.objects.exists())
+
+    @patch('play.views._gym_team', return_value=[{'species':{},'individual':{}}]*3)
+    @patch('play.resolver.battle_auto', return_value={'winner':'b','turns':10,'log':['hit'], 'events':[{'text':'hit'}], 'teams':{}})
+    def test_gym_uses_shared_scaling_and_preserves_replay(self, resolve, gym):
+        self.client.post('/battle/team', {'beast_ids':[self.ba.id]})
+        self.client.post('/battle/fight')
+        self.assertEqual(resolve.call_args.kwargs['mode'],'gym')
+        result=self.client.session['last_battle']
+        self.assertEqual(result['replay']['events'],[{'text':'hit'}])
+        self.assertEqual(result['outcome'],'loss')
+
 @override_settings(ALLOWED_HOSTS=['testserver'], STRIPE_WEBHOOK_SECRET='whsec_unit_only')
 class SubscriptionWebhookTests(TestCase):
     def setUp(self):

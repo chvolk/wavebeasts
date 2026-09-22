@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Beastiary · WaveBeasts<script src="{% static 'brand/sightings.js' %}" defer></script>
+{% block title %}Beastiary · WaveBeasts
 {% endblock %}
 {% block content %}
 <div class="stack" style="justify-content:space-between">
@@ -10,11 +10,12 @@
   </div>
 </div>
 
+<section id="beastiary-lists" data-collection><div data-controls></div><p data-filter-count role="status"></p>
 <div class="section-label">Collection · {{ owned|length }}</div>
 {% if owned %}
-<div class="beasts">
+<div class="beasts" data-beast-list>
   {% for b in owned %}
-  <div class="beast">
+  <div class="beast" data-beast="{{ b.filter_json }}">
     {% if b.shiny %}<span class="shiny">SHINY</span>{% endif %}
     <span class="lv">Lv {{ b.level }}</span>
     <div class="stage"><img src="/sprite/{{ b.id }}.png" alt="" loading="lazy"></div>
@@ -43,9 +44,9 @@
 {% if discovery_msg %}<div class="shop-feedback" role="status">{{ discovery_msg }}</div>{% endif %}
 {% if wild %}
 <div class="section-label">Wild sightings · catch them · {{ wild|length }}</div>
-<div class="beasts">
+<div class="beasts" data-beast-list>
   {% for b in wild %}
-  <div class="beast" data-wild-card>
+  <div class="beast" data-wild-card data-beast="{{ b.filter_json }}">
     {% if b.shiny %}<span class="shiny">SHINY</span>{% endif %}
     <div class="stage" style="opacity:.85"><img src="/sprite/{{ b.id }}.png" alt="" loading="lazy"></div>
     <div class="nm">{{ b.name }}</div>
@@ -68,5 +69,6 @@
   {% endfor %}
 </div>
 {% endif %}
+</section><script src="{% static 'brand/collection.js' %}" defer></script>
 <script src="{% static 'brand/sightings.js' %}" defer></script>
 {% endblock %}

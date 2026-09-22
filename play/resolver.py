@@ -39,8 +39,8 @@ def shop() -> dict:
     return r.json()
 
 
-def battle_auto(team_a: list, team_b: list) -> dict:
+def battle_auto(team_a: list, team_b: list, mode: str = "", replay: bool = False) -> dict:
     """team_* = [{"species": {...}, "individual": {...}}, ...]. Returns {winner, turns, log}."""
-    r = requests.post(f"{RESOLVER}/battle/auto", json={"a": team_a, "b": team_b}, timeout=20)
+    r = requests.post(f"{RESOLVER}/battle/auto", json={"a": team_a, "b": team_b, "mode": mode, "replay": replay}, timeout=20)
     r.raise_for_status()
     return r.json()

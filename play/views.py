@@ -307,12 +307,19 @@ def beast_nickname(request, beast_id):
     return redirect("dashboard")
 
 
+def beast_filter_json(beast):
+    return json.dumps({"name": beast.name, "nickname": (beast.individual_json or {}).get("nickname", ""),
+                       "rarity": beast.rarity, "types": (beast.species_json or {}).get("types", []),
+                       "level": beast.level})
+
+
 @login_required
 def dashboard(request):
     _cull_wilds(request.user)  # hide expired/overflow sightings on the web too
     beasts = list(request.user.beasts.all())
     for beast in beasts:
         beast.display_hp = _hp_now(beast.individual_json or {})
+        beast.filter_json = beast_filter_json(beast)
     listed_ids = set(TradeListing.objects.filter(user=request.user, is_open=True).values_list("beast_id", flat=True))
     team = _wallet(request.user).team_ids or []
     return render(request, "beastiary.html", {
@@ -808,10 +815,14 @@ def battle_fight(request):
         if t:
             opp_name, opp_team = w.user.username, t
             break
-    if not opp_team:
+    gym_match = not opp_team
+    if gym_match:
         opp_team = _gym_team()
+    if gym_match and len(opp_team) != 3:
+        request.session["last_battle"] = {"error": "Could not assemble a full gym. Please try again."}
+        return redirect("battle")
     try:
-        res = resolver.battle_auto(my_team, opp_team)
+        res = resolver.battle_auto(my_team, opp_team, mode="gym" if gym_match else "", replay=True)
     except Exception as e:
         request.session["last_battle"] = {"error": f"Battle resolver unavailable: {e}"}
         return redirect("battle")
@@ -825,7 +836,7 @@ def battle_fight(request):
     BattleRecord.objects.create(user=request.user, opponent=opp_name, result=outcome,
                                 turns=res.get("turns", 0), reward=reward)
     request.session["last_battle"] = {"outcome": outcome, "opponent": opp_name, "reward": reward,
-                                      "turns": res.get("turns", 0), "log": res.get("log", [])[:12]}
+                                      "turns": res.get("turns", 0), "log": res.get("log", []), "replay": res}
     return redirect("battle")
 
 

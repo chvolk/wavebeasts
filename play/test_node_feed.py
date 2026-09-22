@@ -31,3 +31,29 @@ class NodeFeedTests(TestCase):
 
     def test_requires_node_auth(self):
         self.assertEqual(self.client.get('/api/account').status_code,403)
+
+    def test_scanner_lists_all_device_kinds_privately_and_caps_feed(self):
+        self.client.force_login(self.user)
+        self.nodes[0].kind='phone';self.nodes[0].save()
+        response=self.client.get('/scan/')
+        self.assertEqual(response['Cache-Control'],'private, no-store')
+        self.assertEqual(len(response.context['snapshots']),25)
+        self.assertContains(response,'Beast 24')
+        self.assertNotContains(response,'Private reward')
+        self.wallet.subscribed=False;self.wallet.save()
+        response=self.client.get('/scan/')
+        self.assertEqual(response.context['snapshots'],[])
+        self.assertNotContains(response,'Beast 24')
+
+    def test_scanner_discoveries_include_rarity_type_and_source(self):
+        from .models import OwnedBeast
+        beast=OwnedBeast.objects.create(user=self.user,node=self.nodes[0],name='Radio Drake',species_id='scan-find',
+            rarity='epic',status='owned',species_json={'types':['spark','gale']},individual_json={})
+        self.client.force_login(self.user)
+        response=self.client.get('/scan/')
+        self.assertEqual([b.id for b in response.context['finds']],[beast.id])
+        self.assertContains(response,'Radio Drake')
+        self.assertContains(response,'rt-epic')
+        self.assertContains(response,'spark / gale')
+        self.assertContains(response,'data-beast=')
+        self.assertContains(self.client.get('/me/'),'data-beast=')

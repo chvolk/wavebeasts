@@ -71,3 +71,10 @@ The iOS simulator test initially exposed XcodeGen overwriting the release versio
 explicit generated-plist properties now preserve 0.12.2/build 21. iOS uses Apple Vision as a fallback
 when WKWebView lacks BarcodeDetector, with a generated-QR decoding test. Sensor/camera bridge
 messages are restricted to loopback content, and external account links open outside the local web view.
+
+Final iOS validation: [GitHub Actions run 35670673473](https://github.com/chvolk/wavebeast/actions/runs/35670673473)
+passed the device build and both simulator tests: embedded engine/current shop/countdown/version,
+and exact QR decoding. Vision's current request revision returned no result for a valid QR fixture
+on this runtime; the compatible request revision plus Core Image QR fallback passes. The public
+`wavebeast-ios-unsigned.ipa` contains version 0.12.2/build 21 and still requires personal signing.
+Physical camera capture, sensor readings and device installation were not exercised by the simulator.

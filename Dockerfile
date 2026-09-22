@@ -6,7 +6,7 @@ WORKDIR /app
 # Bump ENGINE_REV whenever the engine binary is re-published so the ADD below re-fetches (it uses a fixed
 # "latest" URL that Docker would otherwise cache). The RUN references the ARG, so changing it busts the
 # cache from here down and pulls the fresh binary. 2026-09-21f: UI rebrand and local HP display.
-ARG ENGINE_REV=2026-09-21l
+ARG ENGINE_REV=2026-09-21m
 RUN echo "engine rev ${ENGINE_REV}"
 ADD https://github.com/chvolk/wavebeast-dl/releases/latest/download/wavebeast-linux-amd64 /usr/local/bin/wavebeast
 RUN chmod +x /usr/local/bin/wavebeast && /usr/local/bin/wavebeast -version

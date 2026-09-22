@@ -1141,7 +1141,7 @@ def api_beasts(request):
                          "beasts": out, "wild": wild, "inventory": inv,
                          "buddy_beast_id": getattr(buddy, "beast_id", None),
                          "subscribed": w.subscribed, "shards": w.shards, "cores": w.cores,
-                         "catch_drives": _owned_drives(node.user)})
+                         "catch_drives": _owned_drives(node.user), "scan_ready_in": node.seconds_until_ready()})
 
 
     response["Cache-Control"] = "private, no-store"

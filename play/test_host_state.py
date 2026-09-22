@@ -2,6 +2,8 @@
 import json
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.utils import timezone
+from datetime import timedelta
 from .models import InventoryItem, Node, Wallet
 from .tests import _beast
 
@@ -43,3 +45,11 @@ class HostStateTests(TestCase):
         self.assertEqual(self.api(self.a, '/api/train', {'beast_id': self.beast.id, 'item_id': 'spark_drive'}).status_code, 400)
         self.assertEqual(self.api(self.a, '/api/train').status_code, 405)
         self.assertEqual(InventoryItem.objects.get(user=self.user, item_id='kibble').qty, 1)
+
+    def test_state_reports_selected_nodes_scan_cooldown(self):
+        self.a.last_snapshot_at = timezone.now() - timedelta(seconds=10)
+        self.a.save()
+        wait = self.api(self.a, '/api/beasts').json()['scan_ready_in']
+        self.assertGreater(wait, 0)
+        self.assertLessEqual(wait, self.a.min_interval())
+        self.assertEqual(self.api(self.b, '/api/beasts').json()['scan_ready_in'], 0)

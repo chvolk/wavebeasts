@@ -3,7 +3,7 @@ import re
 from django.utils import timezone
 from . import appversion
 
-LISTENER_VERSION = '1.1.0'
+LISTENER_VERSION = '1.2.0'
 MIN_LISTENER_VERSION = '1.1.0'
 MIN_ENGINE_VERSION = '0.12.15'
 MIN_ENGINE_CODE = 34

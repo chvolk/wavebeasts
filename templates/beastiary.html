@@ -10,6 +10,7 @@
   </div>
 </div>
 
+<div class="field-goals">{% for g in goals %}<div><b>{{ g.label }}</b><span>{{ g.value }} / {{ g.target }}</span><progress value="{{ g.value }}" max="{{ g.target }}" aria-label="{{ g.label }}"></progress></div>{% endfor %}</div>
 <section id="beastiary-lists" data-collection><div data-controls></div><p data-filter-count role="status"></p>
 <div class="section-label">Collection · {{ owned|length }}</div>
 {% if owned %}
@@ -19,6 +20,7 @@
     {% if b.shiny %}<span class="shiny">SHINY</span>{% endif %}
     <span class="lv">Lv {{ b.level }}</span>
     <div class="stage"><img src="/sprite/{{ b.id }}.png" alt="" loading="lazy"></div>
+    <a class="btn sec sm" href="/me/{{ b.id }}/">{% if b.favorite %}★ {% endif %}Field journal</a>
     <div class="nm">{{ b.individual_json.nickname|default:b.name }}</div>
     <div class="ty">{{ b.types_display }} · {{ b.tribe }}</div>
     <span class="tag rt-{{ b.rarity }}">{{ b.rarity }}</span>

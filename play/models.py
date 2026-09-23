@@ -69,6 +69,14 @@ class Node(models.Model):
     client_app = models.CharField(max_length=64, blank=True)
     client_version = models.CharField(max_length=32, blank=True)
     client_reported_at = models.DateTimeField(null=True, blank=True)
+    last_seen_at = models.DateTimeField(null=True, blank=True)
+    last_attempt_at = models.DateTimeField(null=True, blank=True)
+    next_attempt_at = models.DateTimeField(null=True, blank=True)
+    heartbeat_sec = models.PositiveIntegerField(default=0)
+    scan_mode = models.CharField(max_length=16, default="unknown")
+    sensors = models.JSONField(default=list)
+    last_error = models.CharField(max_length=200, blank=True)
+    failures = models.PositiveIntegerField(default=0)
     rate_limit_sec = models.IntegerField(default=300)  # base snapshot cadence (anti-spam); ~once every 5 min
     boost_interval_sec = models.IntegerField(default=100)  # cadence while boosted
     boosted_until = models.DateTimeField(null=True, blank=True)
@@ -104,6 +112,9 @@ class OwnedBeast(models.Model):
     STATUS = [("wild", "wild"), ("owned", "owned")]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="beasts")
     node = models.ForeignKey(Node, null=True, blank=True, on_delete=models.SET_NULL)
+    favorite = models.BooleanField(default=False)
+    field_notes = models.CharField(max_length=280, blank=True)
+    journal_data = models.JSONField(default=dict)
     source_id = models.CharField(max_length=64, blank=True, default="")  # local individual id, for dedupe on upload
     species_id = models.CharField(max_length=32)
     id_version = models.IntegerField(default=1)
@@ -229,3 +240,19 @@ class BattleRecord(models.Model):
 
     class Meta:
         ordering = ["-created"]
+
+
+class ActivityEntry(models.Model):
+    """Account-owned audit entries. Historical summaries survive node/beast deletion."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="activity_entries")
+    at = models.DateTimeField(default=timezone.now, db_index=True)
+    kind = models.CharField(max_length=32)
+    summary = models.CharField(max_length=300)
+    source = models.CharField(max_length=128, blank=True)
+    beast_key = models.CharField(max_length=64, blank=True)
+    changes = models.JSONField(default=dict)
+    balances = models.JSONField(default=dict)
+
+    class Meta:
+        ordering = ["-id"]
+        indexes = [models.Index(fields=["user", "-id"])]

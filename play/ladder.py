@@ -4,7 +4,8 @@ import random
 from django.db import transaction
 from django.db.models import F
 
-from . import resolver
+from . import resolver, journals
+from .activity import audit
 from .models import AsyncBattle, LadderTeam, Wallet
 
 WIN_SHARDS = 10
@@ -17,6 +18,7 @@ def _wallet(user):
 
 
 @transaction.atomic
+@audit("battle", "Ladder battle")
 def resolve_match(a, b, initiator=None):
     """Resolve one ladder match between two LadderTeams via the Go resolver: update Elo + W/L, log an
     AsyncBattle for each side (seen only for the initiator, so passive matches show up "while you were
@@ -52,6 +54,11 @@ def resolve_match(a, b, initiator=None):
     winner_user = a.user if a_res == "win" else (b.user if b_res == "win" else None)
     if winner_user:
         Wallet.objects.filter(user=winner_user).update(shards=F("shards") + WIN_SHARDS)
+    for team, result in ((a,a_res),(b,b_res)):
+        ids=[f.get("individual",{}).get("id") for f in team.fighters]
+        for beast in team.user.beasts.filter(status="owned"):
+            if str(beast.pk) in ids or (beast.individual_json or {}).get("id") in ids:
+                journals.remember(beast,"battle","Ladder battle: "+result,win=result=="win")
     return a_res
 
 

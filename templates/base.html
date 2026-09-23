@@ -168,7 +168,7 @@
   @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 <link rel="stylesheet" href="{% static 'brand/signal.css' %}">
-</head>
+<link rel="stylesheet" href="{% static 'brand/fieldbook.css' %}"><script src="{% static 'brand/fieldbook.js' %}" defer></script></head>
 <body>
 {% block page %}
 {% block nav %}
@@ -177,6 +177,7 @@
   {% if user.is_authenticated %}
   <div class="links">
     <a href="/scan/" class="{% if nav == 'scan' %}active{% endif %}">Scan{% if not wb_wallet.subscribed %} ✦{% endif %}</a>
+    <a href="/activity/" class="{% if nav == 'activity' %}active{% endif %}">Activity</a>
     <a href="/me/" class="{% if nav == 'beastiary' %}active{% endif %}">Beastiary</a>
     <a href="/shop/" class="{% if nav == 'shop' %}active{% endif %}">Shop</a>
     <a href="/trade/" class="{% if nav == 'trade' %}active{% endif %}">Trade</a>

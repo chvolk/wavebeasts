@@ -18,14 +18,14 @@ class ClientUpdateTests(TestCase):
         self.assertTrue(response.json()['update_available'])
         self.node.refresh_from_db();self.assertIsNone(self.node.last_snapshot_at)
         self.assertEqual(Snapshot.objects.count(),0)
-        self.assertFalse(self.post('/api/node/check-in',{'client':{'id':'wavebeast-node','app_v':'1.1.0'}}).json()['update_available'])
+        self.assertFalse(self.post('/api/node/check-in',{'client':{'id':'wavebeast-node','app_v':'1.2.0'}}).json()['update_available'])
         self.assertEqual(self.client.post('/api/node/check-in',data='{}',content_type='application/json').status_code,403)
     def test_legacy_listener_cannot_use_manual_five_minute_cooldown(self):
         self.node.last_snapshot_at=timezone.now()-timedelta(minutes=6);self.node.save()
         response=self.post('/api/snapshot',{'client':{'id':'wavebeast-node','app_v':'1.1.0'},'signals':[]})
         self.assertEqual(response.status_code,429)
         self.assertGreater(response.json()['retry_after'],1400)
-        self.node.refresh_from_db();self.assertFalse(status(self.node)['update_available'])
+        self.node.refresh_from_db();self.assertTrue(status(self.node)['update_available']);self.assertFalse(status(self.node)['update_required'])
     @patch('play.views.resolver.generate',return_value={'outcome':'nothing'})
     def test_auto_thirty_minutes_and_manual_five_minutes(self,generate):
         self.node.last_snapshot_at=timezone.now()-timedelta(minutes=6);self.node.save()
@@ -41,7 +41,8 @@ class ClientUpdateTests(TestCase):
         self.assertTrue(status(self.node)['custom']);self.assertFalse(status(self.node)['update_available'])
         self.node.client_app='wavebeast-engine';self.node.client_version='0.1.0'
         self.node.save();self.client.force_login(self.user)
-        self.assertContains(self.client.get('/nodes/'),'Update required')
+        self.assertContains(self.client.get('/nodes/'),'data-node-health')
+        self.assertTrue(self.client.get('/api/nodes/status').json()['nodes'][0]['update']['update_required'])
 
     @patch('play.views.resolver.generate')
     def test_required_updates_block_scan_without_resolving_or_spending(self,generate):

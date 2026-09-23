@@ -1,3 +1,5 @@
+from . import journals, node_health
+from .activity import audit
 import hashlib
 import json
 import random
@@ -315,7 +317,7 @@ def beast_nickname(request, beast_id):
 
 
 def beast_filter_json(beast):
-    return json.dumps({"name": beast.name, "nickname": (beast.individual_json or {}).get("nickname", ""),
+    return json.dumps({"favorite": beast.favorite, "name": beast.name, "nickname": (beast.individual_json or {}).get("nickname", ""),
                        "rarity": beast.rarity, "types": (beast.species_json or {}).get("types", []),
                        "level": beast.level})
 
@@ -329,7 +331,7 @@ def dashboard(request):
     listed_ids = set(TradeListing.objects.filter(user=request.user, is_open=True).values_list("beast_id", flat=True))
     team = _wallet(request.user).team_ids or []
     return render(request, "beastiary.html", {
-        "owned": beasts,
+        "owned": beasts, "goals": journals.goals(beasts),
         "wallet": _wallet(request.user),
         "items": list(request.user.items.filter(qty__gt=0)),
         "listed_ids": listed_ids,
@@ -345,6 +347,7 @@ def _owned_drives(user):
 
 
 @transaction.atomic
+@audit('catch', 'Capture attempt')
 def _catch_sighting(user, beast_id, drive):
     beast = OwnedBeast.objects.select_for_update().filter(id=beast_id, user=user, status="wild").first()
     if not beast:
@@ -365,12 +368,14 @@ def _catch_sighting(user, beast_id, drive):
         beast.status = "owned"
         beast.expires_at = None
         beast.save(update_fields=["status", "expires_at"])
+        journals.remember(beast,"catch","Caught with "+drive.replace("_"," "))
     message = f"Caught {beast.name}!" if caught else f"{beast.name} broke free. The sighting is still in your queue."
     return {"ok": True, "caught": caught, "chance": round(chance, 2), "drive": drive,
             "remaining": inv.qty, "message": message, "beast": _beast_row(beast)}, 200
 
 
 @transaction.atomic
+@audit('dismiss', 'Sighting dismissed')
 def _dismiss_sighting(user, beast_id):
     beast = OwnedBeast.objects.select_for_update().filter(id=beast_id, user=user, status="wild").first()
     if not beast:
@@ -472,6 +477,7 @@ def node_app_token(request):
 
 @login_required
 @require_POST
+@audit('node', 'Manual scan boost')
 def node_boost(request, node_id):
     node = get_object_or_404(Node, id=node_id, user=request.user)
     if not _paid(request.user):
@@ -556,6 +562,7 @@ def trade_unlist(request, listing_id):
 
 @login_required
 @require_POST
+@audit('trade', 'Trade offer escrow')
 def trade_offer(request, listing_id):
     if not _paid(request.user):
         request.session["trade_msg"] = "Trading is a paid feature."
@@ -614,6 +621,7 @@ def trade_offer(request, listing_id):
 
 @login_required
 @require_POST
+@audit('trade', 'Trade completed')
 def trade_accept(request, offer_id):
     if not _paid(request.user):
         request.session["trade_msg"] = "Trading is a paid feature."
@@ -638,14 +646,18 @@ def trade_accept(request, offer_id):
         for tb in their_beasts:
             tb.user = request.user
             tb.status = "owned"
-            tb.save(update_fields=["user", "status"])
+            tb.favorite=False;tb.field_notes=""
+            tb.save(update_fields=["user", "status", "favorite", "field_notes"])
+            journals.remember(tb,"trade","Joined a new collection through trade")
         my_wallet.shards += offer.offered_shards
         my_wallet.cores += offer.offered_cores
         my_wallet.save(update_fields=["shards", "cores"])
         # give the offerer the listed beast
         my_beast.user = offer.from_user
         my_beast.status = "owned"
-        my_beast.save(update_fields=["user", "status"])
+        my_beast.favorite=False;my_beast.field_notes=""
+        my_beast.save(update_fields=["user", "status", "favorite", "field_notes"])
+        journals.remember(my_beast,"trade","Joined a new collection through trade")
         listing.is_open = False
         listing.save(update_fields=["is_open"])
         offer.status = "accepted"
@@ -668,6 +680,7 @@ def _detach_beasts(user, beast_ids):
     LadderTeam.objects.filter(user=user).update(fighters=[])
 
 
+@audit('trade', 'Trade escrow refunded')
 def _refund_offer(offer):
     """Return escrowed shards/cores to the offerer (beasts free themselves once status != pending)."""
     if offer.offered_shards or offer.offered_cores:
@@ -813,6 +826,7 @@ def set_team(request):
 
 @login_required
 @require_POST
+@audit('battle', 'Battle completed')
 def battle_fight(request):
     if not _paid(request.user):
         request.session["last_battle"] = {"error": "Battles are a paid feature."}
@@ -848,6 +862,8 @@ def battle_fight(request):
         w = _wallet(request.user)
         w.shards += reward
         w.save(update_fields=["shards"])
+    for b in request.user.beasts.filter(id__in=_wallet(request.user).team_ids, status="owned"):
+        journals.remember(b,"battle",f"Battle against {opp_name}: {outcome}",win=outcome=="win")
     BattleRecord.objects.create(user=request.user, opponent=opp_name, result=outcome,
                                 turns=res.get("turns", 0), reward=reward)
     request.session["last_battle"] = {"outcome": outcome, "opponent": opp_name, "reward": reward,
@@ -876,14 +892,17 @@ def api_snapshot(request):
     return submit_snapshot(request, node, bundle)
 
 
+@audit('scan', 'Scan completed')
 def submit_snapshot(request, node, bundle):
     """Shared account-authoritative roll for API nodes and the manual browser scanner."""
     from .client_updates import report, status
     if not isinstance(bundle, dict):
         return JsonResponse({"error": "Expected a scan object"}, status=400)
     report(node, bundle)
+    node_health.attempt(node, bundle)
     update = status(node)
     if update.get("update_required"):
+        node_health.result(node, "update_required")
         return JsonResponse({"accepted": False, "error": "update_required",
                              "message": "Update this official client before scanning online. Your collection and inventory are unchanged.",
                              **update, "download_url": settings.SITE_URL.rstrip("/")+"/download/"}, status=426)
@@ -894,6 +913,7 @@ def submit_snapshot(request, node, bundle):
         import math
         wait = max(wait, math.ceil(1800-(timezone.now()-node.last_snapshot_at).total_seconds()))
     if wait > 0:
+        node_health.result(node, wait=wait)
         return JsonResponse({"accepted": False, "error": "rate_limited", "retry_after": wait,
                              "hint": "Passive scans run every 30 minutes" if passive else "boost this node with cores to raise the rate"}, status=429)
     try:
@@ -901,9 +921,11 @@ def submit_snapshot(request, node, bundle):
         # resulting stats can't be modded or ground out. Species stays deterministic from the bundle.
         res = resolver.generate(bundle, roll_nonce=secrets.token_hex(16))
     except Exception as e:
+        node_health.result(node, "resolver")
         return JsonResponse({"error": f"resolver unavailable: {e}"}, status=502)
     node.last_snapshot_at = timezone.now()
     node.save(update_fields=["last_snapshot_at"])
+    node_health.result(node, wait=max(1800,node.min_interval()) if passive else node.min_interval())
     outcome = res.get("outcome")
     extra = {}
     if outcome == "resource":
@@ -926,6 +948,7 @@ def submit_snapshot(request, node, bundle):
 
 
 @csrf_exempt
+@audit('import', 'Collection imported')
 def api_import(request):
     """Upload a subscriber's local collection to their account (deduped by the local beast id). Trust the
     uploaded species/individual (subscription-gated) but cap IVs/level. Called by the engine's /node/upload."""
@@ -1008,6 +1031,7 @@ def api_sync(request):
 
 
 @csrf_exempt
+@audit('release', 'Beast released')
 def api_release(request):
     """Release a beast back to the waves - permanently removes it from the account (node-token auth,
     free). Can't release your slotted buddy; also clears it from your team and any open trade listing."""
@@ -1021,6 +1045,8 @@ def api_release(request):
     beast = OwnedBeast.objects.filter(id=data.get("beast_id"), user=node.user).first()
     if not beast:
         return JsonResponse({"error": "no such beast"}, status=404)
+    if beast.favorite:
+        return JsonResponse({"error":"Remove this beast from favorites before releasing it"},status=409)
     buddy = getattr(node.user, "buddy", None)
     if buddy and buddy.beast_id == beast.id:
         return JsonResponse({"error": "unslot your buddy before releasing it"}, status=409)
@@ -1071,6 +1097,7 @@ def api_buy(request):
     return JsonResponse(payload, status=status)
 
 
+@audit('shop', 'Shop purchase')
 def _buy_item(user, item_id, qty):
     """Server-authoritative purchase from account currency. Price comes from the engine catalog and the
     balance is checked here, so nothing about the cost is client-set. Shared by the node API and the web
@@ -1158,6 +1185,7 @@ def api_account(request):
         "beasts": user.beasts.filter(status="owned").count(), "nodes": user.nodes.count(),
         "node_limit": PAID_NODE_LIMIT if w.subscribed else FREE_NODE_LIMIT,
     }, "node": {"name": node.name, "kind": node.kind, "next_snapshot_in": node.seconds_until_ready()},
+        "node_health": [node_health.row(n) for n in user.nodes.all()],
         "recent_snapshots": [{"id": item.id, "node_name": item.node.name,
             "at": item.at.isoformat(), "outcome": item.outcome, "detail": item.detail}
             for item in Snapshot.objects.filter(node__user=user).select_related("node")
@@ -1204,7 +1232,7 @@ def api_beast(request, beast_id):
     row = _beast_row(b)
     ind = dict(b.individual_json or {})
     ind["id"] = str(b.id)
-    row.update({"id": str(b.id), "species": b.species_json, "individual": ind,
+    row.update({"journal": journals.profile(b), "id": str(b.id), "species": b.species_json, "individual": ind,
                 "xp": ind.get("xp", 0), "next": b.level ** 3 * 15,
                 "moves": ind.get("moves", []), "tribe": (b.species_json or {}).get("tribe", "")})
     response = JsonResponse(row)
@@ -1215,6 +1243,7 @@ def api_beast(request, beast_id):
 @csrf_exempt
 @require_POST
 @transaction.atomic
+@audit('train', 'Training')
 def api_train(request):
     node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
     if not node:
@@ -1241,12 +1270,13 @@ def api_train(request):
     b.individual_json = ind
     b.level = ind.get("level", b.level)
     b.save(update_fields=["individual_json", "level"])
+    journals.remember(b,"train",f"Trained with {item}: +{xp} XP; level {b.level}")
     return JsonResponse({"ok": True, "beast": _beast_row(b), "xp_gained": xp, "levels_gained": levels})
 
 def _beast_row(b):
     ind = b.individual_json or {}
     hp = _hp_now(ind)
-    row = {"id": b.id, "name": b.name, "rarity": b.rarity, "shiny": b.shiny, "level": b.level,
+    row = {"favorite": b.favorite, "traits": journals.traits(b), "id": b.id, "name": b.name, "rarity": b.rarity, "shiny": b.shiny, "level": b.level,
            "species_id": b.species_id, "verified": b.verified, "status": b.status,
            "types": (b.species_json or {}).get("types", []), "nickname": ind.get("nickname", ""),
            "nature": ind.get("nature", ""), "hp": hp, "hp_max": HP_MAX, "fainted": hp <= 0}
@@ -1292,6 +1322,7 @@ def api_dismiss_sighting(request):
 
 
 @csrf_exempt
+@audit('heal', 'Potion used')
 def api_heal(request):
     """Heal a beast to full by spending a Potion from the bag (node-token auth). Health also regenerates
     over time on its own; this is the instant option."""
@@ -1356,6 +1387,7 @@ def _buddy_auth(request):
 @csrf_exempt
 @require_GET
 @transaction.atomic
+@audit('buddy', 'Buddy away rewards')
 def api_buddy(request):
     """GET the current buddy + any away-events accrued since the last poll (server-rolled, rate-limited)."""
     node, err = _buddy_auth(request)
@@ -1368,6 +1400,8 @@ def api_buddy(request):
     events = buddymod.accrue_events(b, w, b.beast) if b.beast_id else []
     if b.beast_id and b.beast:
         b.beast.save()
+        for event in events:
+            journals.remember(b.beast,"buddy",event.get("detail","Buddy adventure"),win=True if event.get("type")=="combat" else None)
     w.save()
     b.save()
     return JsonResponse({"ok": True, "buddy": buddymod.state(b), "events": events,
@@ -1413,6 +1447,7 @@ def api_buddy_slot(request):
 @csrf_exempt
 @require_POST
 @transaction.atomic
+@audit('buddy', 'Buddy care')
 def api_buddy_care(request):
     """Apply a care action (feed/play/rest/clean/train) to the slotted buddy."""
     node, err = _buddy_auth(request)
@@ -1436,6 +1471,7 @@ def api_buddy_care(request):
         return JsonResponse({"error": res["error"]}, status=400)
     if b.beast:
         b.beast.save()
+        journals.remember(b.beast,"care","Buddy care: "+str(data.get("action","")))
     b.save()
     return JsonResponse({"ok": True, "result": res, "buddy": buddymod.state(b)})
 
@@ -1494,7 +1530,7 @@ def _create_beast(node, sp, ind, status):
         user=node.user, node=node, species_id=sp.get("species_id", ""), id_version=sp.get("id_version", 1),
         name=sp.get("name", "?"), rarity=ind.get("rarity", "common"), shiny=bool(ind.get("shiny")),
         level=ind.get("level", 1), status=status, verified=True, species_json=sp, individual_json=ind,
-        expires_at=expires)
+        expires_at=expires, journal_data={"origin":{"at":timezone.now().isoformat(),"device":node.name,"signals":[s["name"] for s in node.sensors]}, "events":[{"at":timezone.now().isoformat(),"kind":"discovery","text":"Discovered by "+node.name}]})
 
 
 def _apply_beast(node, res):
@@ -1514,10 +1550,13 @@ def _apply_beast(node, res):
         fighters = [_fighter(b) for b in party_beasts]
         try:
             won = resolver.battle_auto(fighters, [{"species": sp, "individual": ind}]).get("winner") == "a"
+            resolved=True
         except Exception:
             won = True  # don't punish the player if the resolver hiccups
+            resolved=False
         for b in party_beasts:  # a fight costs the whole party some health either way
             _set_hp(b, _hp_now(b.individual_json or {}) - HP_BATTLE_COST)
+            if resolved:journals.remember(b,"battle",f"Wild encounter with {sp.get('name','a beast')}: {'won' if won else 'lost'}",win=won)
         if not won:
             return {"detail": f"{sp.get('name')} bested your team and fled",
                     "beast": None, "caught": False, "fled": True, "battled": True}
@@ -1539,7 +1578,9 @@ def node_check_in(request):
     if len(request.body)>4096:
         return JsonResponse({"error": "Report too large"}, status=400)
     try:
-        report(node, json.loads(request.body))
+        body=json.loads(request.body)
+        report(node, body)
+        node_health.report(node, body)
     except (ValueError, TypeError):
         return JsonResponse({"error": "Invalid version report"}, status=400)
     return JsonResponse({**status(node), "passive_interval_sec": 1800})

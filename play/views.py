@@ -245,9 +245,12 @@ def stripe_webhook(request):
 def app_version(request):
     """Version manifest the Android app polls to prompt for updates."""
     from . import appversion
-    from .client_updates import LISTENER_VERSION
+    from .client_updates import LISTENER_VERSION, MIN_ENGINE_CODE, MIN_ENGINE_VERSION, MIN_LISTENER_VERSION
     return JsonResponse({
         "listener_version": LISTENER_VERSION,
+        "minimum_engine_version": MIN_ENGINE_VERSION,
+        "minimum_engine_code": MIN_ENGINE_CODE,
+        "minimum_listener_version": MIN_LISTENER_VERSION,
         "version_code": appversion.VERSION_CODE,
         "version_name": appversion.VERSION_NAME,
         "notes": appversion.NOTES,
@@ -875,10 +878,15 @@ def api_snapshot(request):
 
 def submit_snapshot(request, node, bundle):
     """Shared account-authoritative roll for API nodes and the manual browser scanner."""
-    from .client_updates import report
+    from .client_updates import report, status
     if not isinstance(bundle, dict):
         return JsonResponse({"error": "Expected a scan object"}, status=400)
     report(node, bundle)
+    update = status(node)
+    if update.get("update_required"):
+        return JsonResponse({"accepted": False, "error": "update_required",
+                             "message": "Update this official client before scanning online. Your collection and inventory are unchanged.",
+                             **update, "download_url": settings.SITE_URL.rstrip("/")+"/download/"}, status=426)
     client = bundle.get("client") or {}
     passive = bundle.get("scan_mode") == "auto" or (isinstance(client, dict) and client.get("id") == "wavebeast-node")
     wait = node.seconds_until_ready()

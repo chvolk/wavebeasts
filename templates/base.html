@@ -203,7 +203,9 @@
   {% endif %}
 </nav>
 {% endblock %}
-<main>{% block content %}{% endblock %}</main>
+<main>
+{% if wb_updates_attention %}<aside class="card" role="status" style="border-color:var(--red);margin-bottom:18px"><strong>{% if wb_updates_required %}Client update required{% else %}Check your node updates{% endif %}</strong><p style="margin:6px 0">{{ wb_updates_attention }} device{{ wb_updates_attention|pluralize }} need{{ wb_updates_attention|pluralize:"s," }} an update or version check.{% if wb_updates_required %} Outdated official clients must update before scanning online.{% endif %}</p><a class="btn sec sm" href="/nodes/">Review nodes / update</a></aside>{% endif %}
+{% block content %}{% endblock %}</main>
 <footer style="max-width:960px;margin:44px auto 90px;padding:16px 22px;color:var(--mut);font-size:12.5px;border-top:1px solid var(--line);display:flex;gap:18px;flex-wrap:wrap;align-items:center">
   <span class="wordmark" style="font-size:13px">WAVEBEASTS</span>
   <a href="/docs/" style="color:var(--mut)">How to</a>

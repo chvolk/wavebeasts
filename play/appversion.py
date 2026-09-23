@@ -2,6 +2,6 @@
 the app compares its installed versionCode against this and prompts to update. Keep VERSION_CODE in sync
 with android/app/build.gradle's versionCode in the wavebeast repo."""
 
-VERSION_CODE = 36
-VERSION_NAME = "0.12.17"
+VERSION_CODE = 37
+VERSION_NAME = "0.12.18"
 NOTES = "Node health dashboards, shared activity receipts, beast journals, favorites, personality traits and collection goals."

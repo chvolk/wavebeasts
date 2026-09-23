@@ -2,6 +2,6 @@
 the app compares its installed versionCode against this and prompts to update. Keep VERSION_CODE in sync
 with android/app/build.gradle's versionCode in the wavebeast repo."""
 
-VERSION_CODE = 32
-VERSION_NAME = "0.12.13"
+VERSION_CODE = 33
+VERSION_NAME = "0.12.14"
 NOTES = "Animated catch and dismiss results, background queue/inventory refresh, and stable scrolling. Includes the dismissible first-run field guide."

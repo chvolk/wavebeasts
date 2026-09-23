@@ -50,7 +50,7 @@
  });
  window.addEventListener('popstate',()=>{if(!WBEncounter.busy)refresh().catch(showRefreshError);});
  // A user interacting with a filter or drive selector keeps that control until they finish.
- setInterval(()=>{if(!document.hidden&&!WBEncounter.busy&&!root.contains(document.activeElement))refresh().catch(()=>{});},15000);
- window.addEventListener('focus',()=>{if(!WBEncounter.busy&&!root.contains(document.activeElement))refresh().catch(()=>{});});
+ setInterval(()=>{if(!document.hidden&&!WBEncounter.busy&&!(root.contains(document.activeElement)&&document.activeElement.matches('input,select,textarea')))refresh().catch(()=>{});},15000);
+ window.addEventListener('focus',()=>{if(!WBEncounter.busy&&!(root.contains(document.activeElement)&&document.activeElement.matches('input,select,textarea')))refresh().catch(()=>{});});
  window.WBDiscovery={refresh};
 })();

@@ -8,11 +8,13 @@ EDI/Bishop, or any PC signed in with a node token.
 Config via env:
   WB_SITE          site base URL            (default https://wavebeasts.com)
   WB_NODE_TOKEN    node token from your profile   (required)
-  WB_INTERVAL      fallback seconds between snapshots (default 300; the site's reply overrides)
+  WB_INTERVAL      seconds between passive snapshots (minimum/default 1800)
   WB_ENVIRON_URL   optional JSON endpoint of environment scalars (e.g. Bishop enviro) to fold in
   WB_SIGNALS_CMD   optional command whose stdout is a JSON array of extra signals
   WB_ONCE          if set, send a single snapshot and exit
 """
+import hashlib
+from pathlib import Path
 import json
 import os
 import shutil
@@ -23,7 +25,9 @@ import urllib.request
 
 SITE = os.environ.get("WB_SITE", "https://wavebeasts.com").rstrip("/")
 TOKEN = os.environ.get("WB_NODE_TOKEN", "")
-INTERVAL = int(os.environ.get("WB_INTERVAL", "300"))
+VERSION = "1.1.0"
+INTERVAL = max(1800, int(os.environ.get("WB_INTERVAL", "1800")))
+STATE = Path(os.environ.get("WB_STATE_FILE", str(Path.home()/".local/state/wavebeast-node"/(hashlib.sha256((SITE+TOKEN).encode()).hexdigest()[:16]+".txt"))))
 ENVIRON_URL = os.environ.get("WB_ENVIRON_URL", "")
 SIGNALS_CMD = os.environ.get("WB_SIGNALS_CMD", "")
 
@@ -96,13 +100,14 @@ def build_bundle():
     signals += collect_cmd()
     return {"schema": "wavebeast.scanbundle", "v": 1,
             "captured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "client": {"id": "wavebeast-node", "app": "node"},
+            "client": {"id": "wavebeast-node", "app": "node", "app_v": VERSION},
+            "scan_mode": "auto",
             "signals": signals}
 
 
-def send(bundle):
+def send(bundle, endpoint="snapshot"):
     req = urllib.request.Request(
-        f"{SITE}/api/snapshot", data=json.dumps(bundle).encode(),
+        f"{SITE}/api/{endpoint}", data=json.dumps(bundle).encode(),
         headers={"Content-Type": "application/json", "X-WB-Node-Token": TOKEN}, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=20) as r:
@@ -121,7 +126,22 @@ def main():
         print("WB_NODE_TOKEN is required (create a node in your profile)", file=sys.stderr)
         sys.exit(2)
     once = bool(os.environ.get("WB_ONCE"))
+    code, update = send({"client": {"id": "wavebeast-node", "app": "node", "app_v": VERSION}}, "node/check-in")
+    print(f"WaveBeast listener {VERSION}; passive interval {INTERVAL}s", flush=True)
+    if update.get("update_available"):
+        print("Update available: https://wavebeasts.com/download/wavebeast-node.py", flush=True)
     while True:
+        try:
+            last = float(STATE.read_text())
+        except (OSError, ValueError):
+            last = 0
+        wait = max(0, min(INTERVAL, last + INTERVAL - time.time()))
+        if wait:
+            time.sleep(wait)
+        STATE.parent.mkdir(parents=True, exist_ok=True)
+        temp = STATE.with_suffix(".tmp")
+        temp.write_text(str(time.time()))
+        temp.replace(STATE)
         bundle = build_bundle()
         code, resp = send(bundle)
         n = len(bundle["signals"])
@@ -136,7 +156,7 @@ def main():
             wait = INTERVAL
         if once:
             return
-        time.sleep(max(5, wait))
+        time.sleep(max(INTERVAL, wait))
 
 
 if __name__ == "__main__":

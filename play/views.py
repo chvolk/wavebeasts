@@ -245,7 +245,9 @@ def stripe_webhook(request):
 def app_version(request):
     """Version manifest the Android app polls to prompt for updates."""
     from . import appversion
+    from .client_updates import LISTENER_VERSION
     return JsonResponse({
+        "listener_version": LISTENER_VERSION,
         "version_code": appversion.VERSION_CODE,
         "version_name": appversion.VERSION_NAME,
         "notes": appversion.NOTES,
@@ -412,10 +414,18 @@ def sprite(request, beast_id):
 
 @login_required
 def nodes(request):
+    from .client_updates import status
+    node_rows=list(request.user.nodes.all())
+    for row in node_rows:
+        row.update_status=status(row)
+        row.ready_in=row.seconds_until_ready()
+        if row.client_app == "wavebeast-node" and row.last_snapshot_at:
+            import math
+            row.ready_in=max(row.ready_in, math.ceil(1800-(timezone.now()-row.last_snapshot_at).total_seconds()))
     new_id = request.session.pop("new_token_id", None)
     new_node = request.user.nodes.filter(id=new_id).first() if new_id else None
     return render(request, "nodes.html", {
-        "nodes": list(request.user.nodes.all()),
+        "nodes": node_rows,
         "nodes_msg": request.session.pop("nodes_msg", ""),
         "new_node": new_node, "nav": "nodes"})
 
@@ -865,10 +875,19 @@ def api_snapshot(request):
 
 def submit_snapshot(request, node, bundle):
     """Shared account-authoritative roll for API nodes and the manual browser scanner."""
+    from .client_updates import report
+    if not isinstance(bundle, dict):
+        return JsonResponse({"error": "Expected a scan object"}, status=400)
+    report(node, bundle)
+    client = bundle.get("client") or {}
+    passive = bundle.get("scan_mode") == "auto" or (isinstance(client, dict) and client.get("id") == "wavebeast-node")
     wait = node.seconds_until_ready()
+    if passive and node.last_snapshot_at:
+        import math
+        wait = max(wait, math.ceil(1800-(timezone.now()-node.last_snapshot_at).total_seconds()))
     if wait > 0:
         return JsonResponse({"accepted": False, "error": "rate_limited", "retry_after": wait,
-                             "hint": "boost this node with cores to raise the rate"}, status=429)
+                             "hint": "Passive scans run every 30 minutes" if passive else "boost this node with cores to raise the rate"}, status=429)
     try:
         # Server-authoritative roll: a per-submission random nonce the client can't predict, so the
         # resulting stats can't be modded or ground out. Species stays deterministic from the bundle.
@@ -895,7 +914,7 @@ def submit_snapshot(request, node, bundle):
         detail = res.get("message", "")
     Snapshot.objects.create(node=node, outcome=outcome or "nothing", entropy=res.get("entropy", 0), detail=detail[:200])
     return JsonResponse({"accepted": True, "outcome": outcome, "detail": detail,
-                         "entropy": res.get("entropy", 0), "next_snapshot_in": node.min_interval(), **extra})
+                         "entropy": res.get("entropy", 0), "next_snapshot_in": max(1800,node.min_interval()) if passive else node.min_interval(), **extra})
 
 
 @csrf_exempt
@@ -1500,3 +1519,19 @@ def _apply_beast(node, res):
     b = _create_beast(node, sp, ind, "wild")
     return {"detail": f"sighted {sp.get('name')} [{ind.get('rarity')}]",
             "beast": _beast_row(b), "caught": False, "fled": False, "battled": False}
+
+
+@csrf_exempt
+@require_POST
+def node_check_in(request):
+    from .client_updates import report, status
+    node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
+    if not node:
+        return JsonResponse({"error": "bad node token"}, status=403)
+    if len(request.body)>4096:
+        return JsonResponse({"error": "Report too large"}, status=400)
+    try:
+        report(node, json.loads(request.body))
+    except (ValueError, TypeError):
+        return JsonResponse({"error": "Invalid version report"}, status=400)
+    return JsonResponse({**status(node), "passive_interval_sec": 1800})

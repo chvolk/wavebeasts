@@ -2,7 +2,7 @@
 {% block title %}Nodes · WaveBeasts{% endblock %}
 {% block content %}
 <h1 style="margin:0 0 4px">Listener nodes</h1>
-<p class="muted" style="margin:0 0 12px">Each node feeds rate-limited sensor snapshots to your account. Boost a node with cores to raise its cadence.</p>
+<p class="muted" style="margin:0 0 12px">Each node feeds rate-limited sensor snapshots to your account. Passive scans run every 30 minutes. Version reports below show when a node needs attention.</p>
 <p class="muted" style="margin:0 0 18px;font-size:13px">New to nodes? The <a href="/docs/#cli" style="color:var(--red)">docs</a> walk through the CLI setup, custom sensors, and a paste-ready block to have an AI agent set one up for you.</p>
 
 {% if nodes_msg %}<div class="card" style="border-color:var(--red);color:var(--red);padding:10px 14px;margin:0 0 12px">{{ nodes_msg }}</div>{% endif %}
@@ -48,12 +48,13 @@
   <tr><th>Name</th><th>Token</th><th>Next snapshot</th><th></th></tr>
   {% for n in nodes %}
   <tr>
-    <td style="max-width:280px;word-break:break-word">{{ n.name }}{% if n.kind == 'app' %} <span class="dim" style="font-size:11px">· app</span>{% endif %}</td>
+    <td style="max-width:280px;word-break:break-word">{{ n.name }}{% if n.kind == 'app' %} <span class="dim" style="font-size:11px">· app</span>{% endif %}
+    <p style="font-size:12px;margin:6px 0">{% if n.update_status.managed %}Browser client · updated with the website{% elif n.update_status.update_available %}<strong style="color:var(--red)">Update available · {{ n.client_version|default:"unreported" }} → {{ n.update_status.latest }}</strong> · <a href="/docs/nodes/#updates">Update guide</a>{% elif n.update_status.unknown %}Version not reported · <a href="/docs/nodes/#updates">Check/update this node</a>{% elif n.update_status.custom %}Custom client · {{ n.client_app }} {{ n.client_version }}{% else %}Up to date · {{ n.client_version }}{% endif %}{% if n.client_reported_at %}<br>Reported {{ n.client_reported_at|date:"M j, H:i" }}{% endif %}</p></td>
     <td><code>{{ n.token }}</code> <button class="btn sec sm" type="button" style="padding:3px 8px;font-size:11px" onclick="wbCopy('{{ n.token }}', this)">Copy</button></td>
-    <td>{% if n.seconds_until_ready %}<span class="muted">{{ n.seconds_until_ready }}s</span>{% else %}<span style="color:var(--yellow)">ready</span>{% endif %}
+    <td>{% if n.ready_in %}<span class="muted">{{ n.ready_in }}s</span>{% else %}<span style="color:var(--yellow)">ready</span>{% endif %}
         {% if n.boosted_until %}<span class="dim">· boosted</span>{% endif %}</td>
     <td style="text-align:right;white-space:nowrap">
-      <form method="post" action="/nodes/{{ n.id }}/boost" style="display:inline">{% csrf_token %}<button class="btn sec sm" type="submit">Boost · 1 core</button></form>
+      <form method="post" action="/nodes/{{ n.id }}/boost" style="display:inline">{% csrf_token %}<button class="btn sec sm" type="submit" {% if n.client_app == "wavebeast-node" %}disabled title="Passive listeners always wait at least 30 minutes"{% endif %}>Boost manual · 1 core</button></form>
       <form method="post" action="/nodes/{{ n.id }}/delete" style="display:inline">{% csrf_token %}<button class="btn danger sm" type="submit">Remove</button></form>
     </td>
   </tr>

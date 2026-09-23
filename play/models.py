@@ -66,6 +66,9 @@ class Node(models.Model):
     name = models.CharField(max_length=256)  # free text, emoji allowed
     kind = models.CharField(max_length=16, default="node")
     token = models.CharField(max_length=64, unique=True, default=gen_token)
+    client_app = models.CharField(max_length=64, blank=True)
+    client_version = models.CharField(max_length=32, blank=True)
+    client_reported_at = models.DateTimeField(null=True, blank=True)
     rate_limit_sec = models.IntegerField(default=300)  # base snapshot cadence (anti-spam); ~once every 5 min
     boost_interval_sec = models.IntegerField(default=100)  # cadence while boosted
     boosted_until = models.DateTimeField(null=True, blank=True)

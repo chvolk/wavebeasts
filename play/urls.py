@@ -3,6 +3,7 @@ from django.urls import path
 from . import views, pwa, scanner
 
 urlpatterns = [
+    path("api/node/check-in", views.node_check_in, name="node_check_in"),
     path("service-worker.js", pwa.service_worker, name="service_worker"),
     path("manifest.webmanifest", pwa.manifest, name="web_manifest"),
     path("favicon.ico", pwa.favicon, name="favicon"),

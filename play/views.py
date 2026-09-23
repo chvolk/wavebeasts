@@ -378,7 +378,9 @@ def _dismiss_sighting(user, beast_id):
 @login_required
 @require_POST
 def catch(request, beast_id):
-    result, _ = _catch_sighting(request.user, beast_id, request.POST.get("drive", "spark_drive"))
+    result, status = _catch_sighting(request.user, beast_id, request.POST.get("drive", "spark_drive"))
+    if request.headers.get("Accept") == "application/json":
+        return JsonResponse(result, status=status)
     request.session["discovery_msg"] = result.get("message") or result["error"]
     return redirect("/scan/#scan-finds")
 
@@ -386,7 +388,9 @@ def catch(request, beast_id):
 @login_required
 @require_POST
 def dismiss_sighting(request, beast_id):
-    result, _ = _dismiss_sighting(request.user, beast_id)
+    result, status = _dismiss_sighting(request.user, beast_id)
+    if request.headers.get("Accept") == "application/json":
+        return JsonResponse(result, status=status)
     request.session["discovery_msg"] = result.get("message") or result["error"]
     return redirect("/scan/#scan-finds")
 

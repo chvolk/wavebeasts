@@ -35,7 +35,7 @@
 <div class="section-label">Beast sightings · {{ find_page.paginator.count }}</div>
 <div class="beasts">
   {% for b in finds %}
-  <div class="beast" data-wild-card data-beast="{{ b.filter_json }}">
+  <div class="beast" data-wild-card data-beast-id="{{ b.id }}" data-beast="{{ b.filter_json }}">
     {% if b.shiny %}<span class="shiny">SHINY</span>{% endif %}
     <div class="stage" style="opacity:.85"><img src="/sprite/{{ b.id }}.png" alt="" loading="lazy"></div>
     <div class="nm">{{ b.name }}</div>
@@ -72,5 +72,8 @@
 <script src="{% static 'scan-feed.js' %}" defer></script>
 <script src="{% static 'vendor/zxing-0.21.3.min.js' %}" defer></script><script src="{% static 'browser-scanner.js' %}" defer></script>
 {% endif %}
+<link rel="stylesheet" href="{% static 'encounter.css' %}">
+<script src="{% static 'encounter.js' %}" defer></script>
+<script src="{% static 'discovery.js' %}" defer></script>
 <script src="{% static 'brand/sightings.js' %}" defer></script>
 {% endblock %}

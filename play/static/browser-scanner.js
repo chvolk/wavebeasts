@@ -146,7 +146,8 @@
       const title = document.createElement('h2'); title.textContent = result.beast ? (result.caught?'Caught ':'Sighted ')+result.beast.name : result.outcome==='resource'?'Supplies found':'No clear signal';box.append(title);
       if (result.beast?.id) { const img = document.createElement('img'); img.src='/sprite/'+Number(result.beast.id)+'.png';img.width=128;img.height=128;img.style.imageRendering='pixelated';img.alt=result.beast.name;box.append(img); }
       const text = document.createElement('p');text.textContent=result.detail||'Try a different code next time.';box.append(text);
-      const link = document.createElement('a');link.href=result.beast?'#scan-finds':'#resource-finds';link.onclick=()=>{location.hash=link.hash;location.reload();return false;};link.className='btn';link.textContent=result.beast?'View beast finds':'View resource finds';box.append(link);
+      const link = document.createElement('a');link.href=result.beast?'#scan-finds':'#resource-finds';link.className='btn';link.textContent=result.beast?'View beast finds':'View resource finds';box.append(link);
+      window.WBDiscovery?.refresh().catch(()=>{});
       if(result.wallet) for(const key of ['shards','cores']) document.querySelectorAll(`[data-wallet="${key}"]`).forEach(el=>el.textContent=result.wallet[key]);
     } catch (error) { $('scan-status').textContent = error.message || 'Could not reach your account. Try again.'; }
     finally { busy=false;updateButton(); }

@@ -186,6 +186,8 @@ def onboarding(request):
     if request.method == "POST":
         w.onboarded = True
         w.save(update_fields=["onboarded"])
+        if request.headers.get("Accept") == "application/json":
+            return JsonResponse({"ok": True})
         return redirect("dashboard")
     return render(request, "onboarding.html", {"nav": "", **_clerk_ctx()})
 

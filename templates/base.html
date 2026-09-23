@@ -207,6 +207,7 @@
 <footer style="max-width:960px;margin:44px auto 90px;padding:16px 22px;color:var(--mut);font-size:12.5px;border-top:1px solid var(--line);display:flex;gap:18px;flex-wrap:wrap;align-items:center">
   <span class="wordmark" style="font-size:13px">WAVEBEASTS</span>
   <a href="/docs/" style="color:var(--mut)">How to</a>
+  {% if user.is_authenticated %}<button class="btn sec sm" type="button" data-replay-tutorial>Replay tutorial</button>{% endif %}
   <a href="/privacy/" style="color:var(--mut)">Privacy</a>
   <a href="/terms/" style="color:var(--mut)">Terms</a>
   <a href="/download/" style="color:var(--mut)">Download</a>
@@ -243,5 +244,10 @@
   function wbCookie(v){ try{ localStorage.setItem('wb_cookie', v); }catch(e){} document.getElementById('wb-cookie').style.display='none'; }
 </script>
 <script src="{% static 'pwa/install.js' %}" defer></script>
+{% if user.is_authenticated %}
+<div hidden data-wb-tutorial="site" data-first="{{ wb_wallet.onboarded|yesno:'false,true' }}">{% csrf_token %}</div>
+<link rel="stylesheet" href="{% static 'tutorial.css' %}">
+<script src="{% static 'tutorial.js' %}" defer></script>
+{% endif %}
 </body>
 </html>

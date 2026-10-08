@@ -155,8 +155,12 @@ def verify_and_apply(wallet, token, product_id=None, refresh=False):
         return False, {"error": "play_unavailable"}, 502
     with transaction.atomic():
         w = Wallet.objects.select_for_update().select_related("user").get(pk=wallet.pk)
-        if not refresh and w.billing_provider == "stripe" and w.subscribed:
-            return False, {"error": "stripe_active"}, 409
+        if not refresh and w.subscribed and w.billing_provider != "play":
+            # Premium already comes from somewhere else (Stripe, or a grandfathered/comped account).
+            # Applying a Play purchase on top would double-bill or waste the player's money.
+            if w.billing_provider == "stripe" or w.stripe_customer_id:
+                return False, {"error": "stripe_active"}, 409
+            return False, {"error": "already_premium"}, 409
         if Wallet.objects.filter(play_purchase_token=token).exclude(pk=w.pk).exists():
             return False, {"error": "token_in_use"}, 409
         expected = obfuscated_id(w.user)

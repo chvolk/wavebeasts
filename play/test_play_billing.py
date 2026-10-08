@@ -89,6 +89,31 @@ class VerifyTests(TestCase):
             r = self.post({"purchase_token": "tok-5"})
         self.assertEqual((r.status_code, r.json()["error"]), (409, "stripe_active"))
 
+    def test_legacy_stripe_subscriber_without_provider_refused(self):
+        # Subscribed before billing_provider existed: provider "" but a Stripe customer id.
+        Wallet.objects.filter(pk=self.wallet.pk).update(subscribed=True, billing_provider="", stripe_customer_id="cus_old")
+        with patch.object(playbilling, "fetch_subscription", return_value=sub()):
+            r = self.post({"purchase_token": "tok-5b"})
+        self.assertEqual((r.status_code, r.json()["error"]), (409, "stripe_active"))
+
+    def test_comped_premium_refused(self):
+        Wallet.objects.filter(pk=self.wallet.pk).update(subscribed=True, billing_provider="", stripe_customer_id="")
+        with patch.object(playbilling, "fetch_subscription", return_value=sub()):
+            r = self.post({"purchase_token": "tok-5c"})
+        self.assertEqual((r.status_code, r.json()["error"]), (409, "already_premium"))
+        self.wallet.refresh_from_db()
+        self.assertEqual(self.wallet.play_purchase_token, "")
+
+    def test_backfill_marks_legacy_stripe_subscribers(self):
+        from importlib import import_module
+        from django.apps import apps
+        other = User.objects.create_user("user_comped", password="x")
+        Wallet.objects.create(user=other, subscribed=True, billing_provider="", stripe_customer_id="")
+        Wallet.objects.filter(pk=self.wallet.pk).update(subscribed=True, billing_provider="", stripe_customer_id="cus_1")
+        import_module("play.migrations.0021_backfill_billing_provider").backfill(apps, None)
+        self.assertEqual(Wallet.objects.get(pk=self.wallet.pk).billing_provider, "stripe")
+        self.assertEqual(Wallet.objects.get(user=other).billing_provider, "")
+
     def test_non_app_node_and_bad_token(self):
         pi = Node.objects.create(user=self.user, name="Pi", kind="pi")
         self.assertEqual(self.post({"purchase_token": "x"}, token=pi.token).json()["error"], "app_node_required")

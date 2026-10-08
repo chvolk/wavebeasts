@@ -11,4 +11,8 @@ def wallet(request):
     if request.user.is_authenticated:
         w, _ = Wallet.objects.get_or_create(user=request.user)
         ctx["wb_wallet"] = w
+        from .client_updates import status
+        updates=[status(node) for node in request.user.nodes.all()]
+        ctx["wb_updates_required"]=sum(bool(u.get("update_required")) for u in updates)
+        ctx["wb_updates_attention"]=sum(bool(u.get("update_available") or u.get("unknown")) for u in updates)
     return ctx

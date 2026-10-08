@@ -15,7 +15,7 @@ class SightingTests(TestCase):
         self.client.force_login(self.user)
 
     def test_page_and_api_expose_same_expiry(self):
-        page=self.client.get('/me/')
+        page=self.client.get('/scan/')
         self.assertContains(page,'data-expires-in=')
         self.assertContains(page,'data-expiry-duration=')
         self.assertContains(page,'brand/sightings.js')
@@ -33,7 +33,7 @@ class SightingTests(TestCase):
 
     def test_legacy_sighting_receives_original_day_deadline(self):
         self.beast.expires_at=None;self.beast.save()
-        self.client.get('/me/')
+        self.client.get('/scan/')
         self.beast.refresh_from_db()
         self.assertEqual(self.beast.expires_at,self.beast.caught_at+timedelta(days=1))
 
@@ -41,7 +41,7 @@ class SightingTests(TestCase):
         InventoryItem.objects.create(user=self.user,item_id='pulse_drive',qty=2)
         InventoryItem.objects.create(user=self.user,item_id='nova_drive',qty=0)
         InventoryItem.objects.create(user=self.user,item_id='potion',qty=4)
-        page=self.client.get('/me/')
+        page=self.client.get('/scan/')
         self.assertContains(page,'<option value="pulse_drive">Pulse Drive ×2</option>',html=True)
         self.assertNotContains(page,'<option value="spark_drive">')
         self.assertNotContains(page,'<option value="nova_drive">')
@@ -50,7 +50,7 @@ class SightingTests(TestCase):
         self.assertEqual(row['catch_drives'],[{'item_id':'pulse_drive','name':'Pulse Drive','qty':2}])
 
     def test_no_drives_keeps_dismiss_available(self):
-        page=self.client.get('/me/')
+        page=self.client.get('/scan/')
         self.assertContains(page,'No capture drives in your inventory.')
         self.assertContains(page,f'/beast/{self.beast.id}/dismiss')
         self.assertNotContains(page,'data-catch-form')
@@ -95,3 +95,45 @@ class SightingTests(TestCase):
         self.assertEqual(self.client.get('/api/beasts',HTTP_X_WB_NODE_TOKEN=self.node.token).json()['catch_drives'],[])
         response=self.client.post('/api/sightings/dismiss',json.dumps({'beast_id':self.beast.id}),content_type='application/json',HTTP_X_WB_NODE_TOKEN=self.node.token)
         self.assertEqual(response.status_code,404)
+
+    def test_async_catch_returns_result_and_does_not_redirect_or_spend_twice(self):
+        from unittest.mock import patch
+        item=InventoryItem.objects.create(user=self.user,item_id='pulse_drive',qty=2)
+        url=f'/beast/{self.beast.id}/catch'
+        with patch('play.views.random.random',return_value=0):
+            response=self.client.post(url,{'drive':'pulse_drive'},HTTP_ACCEPT='application/json')
+        self.assertEqual(response.status_code,200)
+        self.assertTrue(response.json()['caught'])
+        self.assertNotIn('discovery_msg',self.client.session)
+        self.assertEqual(self.client.post(url,{'drive':'pulse_drive'},HTTP_ACCEPT='application/json').status_code,404)
+        item.refresh_from_db();self.assertEqual(item.qty,1)
+
+    def test_async_failed_catch_refreshes_last_drive_and_keeps_sighting(self):
+        from unittest.mock import patch
+        InventoryItem.objects.create(user=self.user,item_id='spark_drive',qty=1)
+        with patch('play.views.random.random',return_value=1):
+            response=self.client.post(f'/beast/{self.beast.id}/catch',{'drive':'spark_drive'},HTTP_ACCEPT='application/json')
+        self.assertEqual(response.status_code,200)
+        self.assertFalse(response.json()['caught'])
+        self.assertEqual(response.json()['remaining'],0)
+        self.beast.refresh_from_db();self.assertEqual(self.beast.status,'wild')
+        self.assertNotContains(self.client.get('/scan/'),'data-catch-form')
+        self.assertEqual(self.client.post(f'/beast/{self.beast.id}/catch',{'drive':'spark_drive'},HTTP_ACCEPT='application/json').status_code,409)
+
+    def test_async_dismiss_cannot_remove_owned_or_foreign_beasts(self):
+        other=User.objects.create_user('async-other')
+        foreign=_beast(other);foreign.status='wild';foreign.save()
+        owned=_beast(self.user)
+        for target in [foreign,owned]:
+            response=self.client.post(f'/beast/{target.id}/dismiss',HTTP_ACCEPT='application/json')
+            self.assertEqual(response.status_code,404)
+            self.assertTrue(type(target).objects.filter(pk=target.pk).exists())
+        response=self.client.post(f'/beast/{self.beast.id}/dismiss',HTTP_ACCEPT='application/json')
+        self.assertEqual(response.json()['dismissed'],self.beast.id)
+        self.assertNotIn('discovery_msg',self.client.session)
+
+    def test_async_expired_catch_returns_gone(self):
+        self.beast.expires_at=timezone.now()-timedelta(seconds=1);self.beast.save()
+        response=self.client.post(f'/beast/{self.beast.id}/catch',{'drive':'spark_drive'},HTTP_ACCEPT='application/json')
+        self.assertEqual(response.status_code,410)
+        self.assertTrue(response.json()['expired'])

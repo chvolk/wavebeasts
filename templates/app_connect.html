@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Connect your phone · WaveBeasts{% endblock %}
+{% block content %}
+<div style="max-width:460px;margin:16px auto">
+  <div class="card" style="text-align:center">
+    <div class="eyebrow">WaveBeasts app</div>
+    <h1 class="wordmark" style="margin:6px 0 12px">Connect this phone?</h1>
+    <p style="margin:0 0 6px"><b>{{ device }}</b> wants to sign in as <b>{{ account_name }}</b>.</p>
+    <p class="muted" style="font-size:13.5px;margin:0 0 18px">The app will submit scans to this account and show your beasts, shop and Premium status. You can remove the device any time from <a href="/nodes/">Nodes</a>.</p>
+    {% if msg %}<div class="card" style="border-color:var(--red);color:var(--red);margin-bottom:14px">{{ msg }}</div>{% endif %}
+    <form method="post" action="{{ request.get_full_path }}">
+      {% csrf_token %}
+      <button class="btn" type="submit" style="width:100%"{% if msg %} disabled{% endif %}>Connect</button>
+    </form>
+    <a class="btn sec" href="/me/" style="width:100%;margin-top:10px;display:inline-flex">Cancel</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Delete account · WaveBeasts{% endblock %}
+{% block content %}
+<div style="max-width:520px;margin:16px auto">
+  <div class="card" style="border-color:var(--red)">
+    <div class="eyebrow">Account</div>
+    <h1 class="wordmark" style="margin:6px 0 12px">Delete your account</h1>
+    <p>This permanently removes your account, every beast, your currency and items, your devices, trade
+    listings and offers, ladder team and battle history. Open offers you made are closed; currency held
+    in other players' offers to you is returned to them.</p>
+    <p>An active Premium subscription on wavebeasts.com is cancelled. A Premium subscription bought through
+    Google Play must be cancelled in Google Play; deleting the account does not refund the current period.</p>
+    <p class="muted" style="font-size:13px">This cannot be undone.</p>
+    {% if msg %}<div class="card" style="border-color:var(--red);color:var(--red)">{{ msg }}</div>{% endif %}
+    <form method="post" action="/me/delete">
+      {% csrf_token %}
+      <label class="dim" style="font-size:12px;display:block;margin-bottom:4px">Type DELETE to confirm</label>
+      <input name="confirm" autocomplete="off" autocapitalize="characters" style="width:100%;margin-bottom:12px">
+      <div class="row"><button class="btn" type="submit">Delete my account</button><a class="btn sec" href="/me/" style="width:auto">Cancel</a></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

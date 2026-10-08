@@ -1,30 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Welcome · WaveBeasts{% endblock %}
 {% block content %}
-<div style="max-width:640px;margin:8px auto">
+<div class="card" style="max-width:640px;margin:8px auto">
+  <div class="eyebrow">Your first signal</div>
   <h1 class="wordmark">Welcome to WaveBeasts</h1>
-  <p class="muted" style="margin:6px 0 18px">Scan the real world into collectible creatures. Here's the loop:</p>
-
-  <div class="card" style="margin-bottom:12px">
-    <b style="color:var(--red)">1 · Get a scanner</b>
-    <p class="muted" style="margin:6px 0 0">Play free right now - install the app or run the engine on a Pi from the
-    <a href="/download/" style="color:var(--red)">Download</a> page. Local play needs no account.</p>
-  </div>
-  <div class="card" style="margin-bottom:12px">
-    <b style="color:var(--red)">2 · Link a node</b>
-    <p class="muted" style="margin:6px 0 0">Create a node in <a href="/nodes/" style="color:var(--red)">Nodes</a>, paste its
-    token into your scanner, and its scans feed your account here. Free accounts get one node.</p>
-  </div>
-  <div class="card" style="margin-bottom:12px">
-    <b style="color:var(--red)">3 · Catch, battle, bond</b>
-    <p class="muted" style="margin:6px 0 0">Scans yield beasts (sometimes a battle first). Premium unlocks trading,
-    battles, the async ladder, a companion Buddy, and up to 12 nodes.</p>
-  </div>
-
+  <p class="muted">Scan the world, discover a beast, and make the catch. The six-step field guide covers everything you need to start.</p>
+  <button class="btn sec" type="button" data-replay-tutorial>Replay tutorial</button>
+  <p>Install the app for free local play, or link it to your account from World. Premium also unlocks scanning in your browser.</p>
   <form method="post" style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
     {% csrf_token %}
     <button class="btn" type="submit">Enter WaveBeasts</button>
-    <a class="btn sec" href="/billing/">See Premium</a>
+    <a class="btn sec" href="/download/">Get the app</a>
+    <a class="btn sec" href="/docs/">Read the wiki</a>
   </form>
 </div>
 {% endblock %}

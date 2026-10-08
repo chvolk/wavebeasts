@@ -20,6 +20,15 @@ class Wallet(models.Model):
     subscribed = models.BooleanField(default=False)  # driven by the Stripe subscription status below
     stripe_customer_id = models.CharField(max_length=64, blank=True, default="")
     subscription_status = models.CharField(max_length=32, blank=True, default="")  # active/trialing/past_due/canceled/...
+    billing_provider = models.CharField(max_length=16, blank=True, default="")  # ""|stripe|play - one provider at a time
+    # Google Play subscription (Android app). Token fields are kept after expiry for audit.
+    play_purchase_token = models.CharField(max_length=512, blank=True, default="", db_index=True)
+    play_product_id = models.CharField(max_length=64, blank=True, default="")
+    play_base_plan = models.CharField(max_length=32, blank=True, default="")
+    play_expires_at = models.DateTimeField(null=True, blank=True)
+    play_auto_renewing = models.BooleanField(default=False)
+    play_linked_at = models.DateTimeField(null=True, blank=True)
+    play_obfuscated_id = models.CharField(max_length=64, blank=True, default="", db_index=True)  # HMAC(user id) sent with purchases
     onboarded = models.BooleanField(default=False)
     last_sync = models.DateTimeField(null=True, blank=True)  # once-per-day standardize-old-beasts run
 
@@ -66,6 +75,17 @@ class Node(models.Model):
     name = models.CharField(max_length=256)  # free text, emoji allowed
     kind = models.CharField(max_length=16, default="node")
     token = models.CharField(max_length=64, unique=True, default=gen_token)
+    client_app = models.CharField(max_length=64, blank=True)
+    client_version = models.CharField(max_length=32, blank=True)
+    client_reported_at = models.DateTimeField(null=True, blank=True)
+    last_seen_at = models.DateTimeField(null=True, blank=True)
+    last_attempt_at = models.DateTimeField(null=True, blank=True)
+    next_attempt_at = models.DateTimeField(null=True, blank=True)
+    heartbeat_sec = models.PositiveIntegerField(default=0)
+    scan_mode = models.CharField(max_length=16, default="unknown")
+    sensors = models.JSONField(default=list)
+    last_error = models.CharField(max_length=200, blank=True)
+    failures = models.PositiveIntegerField(default=0)
     rate_limit_sec = models.IntegerField(default=300)  # base snapshot cadence (anti-spam); ~once every 5 min
     boost_interval_sec = models.IntegerField(default=100)  # cadence while boosted
     boosted_until = models.DateTimeField(null=True, blank=True)
@@ -87,6 +107,29 @@ class Node(models.Model):
         return f"{self.name} ({self.kind})"
 
 
+def gen_link_code():
+    return secrets.token_urlsafe(32)
+
+
+class LinkCode(models.Model):
+    """One-time, short-lived code minted by /app/connect after a signed-in user approves connecting a
+    device. The app exchanges it (with the state nonce it generated) for the node token, so the token
+    itself never travels through a deep link."""
+    TTL_SEC = 300
+    code = models.CharField(max_length=43, unique=True, default=gen_link_code)
+    state = models.CharField(max_length=128)
+    node = models.ForeignKey(Node, on_delete=models.CASCADE, related_name="link_codes")
+    created = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
+
+    def is_valid(self):
+        return self.used_at is None and not self.is_expired()
+
+
 class Snapshot(models.Model):
     """Audit log of accepted snapshots."""
     node = models.ForeignKey(Node, on_delete=models.CASCADE, related_name="snapshots")
@@ -101,6 +144,9 @@ class OwnedBeast(models.Model):
     STATUS = [("wild", "wild"), ("owned", "owned")]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="beasts")
     node = models.ForeignKey(Node, null=True, blank=True, on_delete=models.SET_NULL)
+    favorite = models.BooleanField(default=False)
+    field_notes = models.CharField(max_length=280, blank=True)
+    journal_data = models.JSONField(default=dict)
     source_id = models.CharField(max_length=64, blank=True, default="")  # local individual id, for dedupe on upload
     species_id = models.CharField(max_length=32)
     id_version = models.IntegerField(default=1)
@@ -226,3 +272,19 @@ class BattleRecord(models.Model):
 
     class Meta:
         ordering = ["-created"]
+
+
+class ActivityEntry(models.Model):
+    """Account-owned audit entries. Historical summaries survive node/beast deletion."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="activity_entries")
+    at = models.DateTimeField(default=timezone.now, db_index=True)
+    kind = models.CharField(max_length=32)
+    summary = models.CharField(max_length=300)
+    source = models.CharField(max_length=128, blank=True)
+    beast_key = models.CharField(max_length=64, blank=True)
+    changes = models.JSONField(default=dict)
+    balances = models.JSONField(default=dict)
+
+    class Meta:
+        ordering = ["-id"]
+        indexes = [models.Index(fields=["user", "-id"])]

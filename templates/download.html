@@ -4,7 +4,7 @@
 {% block content %}
 <link rel="stylesheet" href="{% static 'wiki.css' %}">
 <script src="{% static 'wiki.js' %}" defer></script>
-<div class="card" style="margin-bottom:24px"><div class="eyebrow">iOS / Android / Desktop</div><h2>Install the web app</h2><p class="muted">Keep your online beastiary, shop, and battles on your home screen. Online features need a connection.</p><button id="pwa-install" class="btn" type="button" hidden>Install WaveBeasts</button><p id="pwa-install-hint" class="muted" hidden></p><noscript><p>Use your browser’s Install app or Add to Home Screen option.</p></noscript></div>
+<div class="card" style="margin-bottom:24px"><div class="eyebrow">Android / Desktop</div><h2>Install the web app</h2><p class="muted">Keep your online beastiary, shop, and battles on your home screen. Online features need a connection.</p><button id="pwa-install" class="btn" type="button" hidden>Install WaveBeasts</button><p id="pwa-install-hint" class="muted" hidden></p><noscript><p>Use your browser’s Install app or Add to Home Screen option.</p></noscript></div>
 {% with base="https://github.com/chvolk/wavebeast-dl/releases/latest/download" %}
 <style>
   .dlgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
@@ -16,7 +16,7 @@
   .cli{display:flex;flex-direction:column;gap:12px}
   .cli .lab{font-family:var(--pixel);font-size:12px;letter-spacing:1px;color:var(--silver);margin-bottom:4px}
   @media(max-width:650px){.dlgrid{grid-template-columns:1fr}.dlgrid-mobile{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:380px){.dlgrid-mobile{grid-template-columns:1fr}}
+  
 </style>
 
 <h1 style="margin:0 0 4px">Download WaveBeast</h1>
@@ -53,18 +53,13 @@ battle. Link this account to trade &amp; battle worldwide.</p>
     <a class="btn" href="{{ base }}/wavebeast-windows-amd64.exe">Windows x64</a>
   </div>
 </div>
-<div class="dlgrid dlgrid-mobile" aria-label="Mobile downloads">
+<div class="dlgrid dlgrid-mobile" aria-label="Mobile downloads" style="grid-template-columns:1fr">
   <div class="dltile">
     <div class="os">Android</div>
-    <div class="sub">Local game, phone sensors and camera.</div>
+    <div class="sub">Local game, phone sensors and camera. Sign in from the app to play with your account.</div>
     <a class="btn" href="/download/app.apk">Download APK</a>
-  </div>
-  <div class="dltile">
-    <div class="os">iOS / iPadOS</div>
-    <div class="sub">Local game for iPhone and iPad.</div>
-    <a class="btn" href="{{ base }}/wavebeast-ios-unsigned.ipa">Download IPA</a>
-    <p class="muted" style="font-size:12px">Unsigned · Sign with your Apple account using a sideloading tool before installing. This is not an App Store or TestFlight install.</p>
-    <a href="/docs/local-play/#ios">iOS install guide ↗</a>
+    <p class="muted" style="font-size:12px;margin:10px 0 0">Google Play release coming soon.</p>
+    <p class="muted" style="font-size:12px">Upgrading from a build before 0.13.0? Uninstall it first - the app now uses a new signing key, so the old sideloaded build cannot update in place. Linked accounts reconnect from the Account tab.</p>
   </div>
 </div>
 

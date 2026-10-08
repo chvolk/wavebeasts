@@ -1,21 +1,18 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load static %}
 {% block title %}Battle · WaveBeasts{% endblock %}
 {% block content %}
 <h1 style="margin:0 0 4px">Battle</h1>
 <p class="muted" style="margin:0 0 18px">Pick a team of up to three, then find a match. Win to earn shards.</p>
 
 {% if result %}
-<div class="card" style="border-color:{% if result.outcome == 'win' %}var(--gold){% elif result.outcome == 'loss' %}var(--red-dim){% else %}var(--line2){% endif %}">
+<div class="card">
   {% if result.error %}
     <b style="color:var(--red)">{{ result.error }}</b>
   {% else %}
-    <div class="stack" style="justify-content:space-between">
-      <h2 style="margin:0;color:{% if result.outcome == 'win' %}var(--gold-hi){% elif result.outcome == 'loss' %}var(--red){% else %}var(--silver){% endif %}">
-        {% if result.outcome == 'win' %}Victory{% elif result.outcome == 'loss' %}Defeat{% else %}Draw{% endif %}</h2>
-      <span class="muted">vs {{ result.opponent }} · {{ result.turns }} turns{% if result.reward %} · +{{ result.reward }} shards{% endif %}</span>
-    </div>
-    <pre style="margin:12px 0 0;max-height:220px">{% for line in result.log %}{{ line }}
-{% endfor %}</pre>
+    <div id="battle-stage"></div>
+    {{ result.replay|json_script:"battle-replay" }}
+    <p class="muted">vs {{ result.opponent }}</p><p id="battle-reward" hidden>{% if result.reward %}+{{ result.reward }} shards{% endif %}</p>
+    <noscript><p>{{ result.outcome }} · {{ result.turns }} turns</p>{% for line in result.log %}<p>{{ line }}</p>{% endfor %}</noscript>
   {% endif %}
 </div>
 {% endif %}
@@ -103,4 +100,5 @@
 </table>
 </div>
 {% endif %}
+<script src="{% static 'brand/collection.js' %}" defer></script><script src="{% static 'brand/battle.js' %}" defer></script>
 {% endblock %}

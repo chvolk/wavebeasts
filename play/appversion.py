@@ -2,6 +2,8 @@
 the app compares its installed versionCode against this and prompts to update. Keep VERSION_CODE in sync
 with android/app/build.gradle's versionCode in the wavebeast repo."""
 
-VERSION_CODE = 28
-VERSION_NAME = "0.12.9"
-NOTES = "Auto scans run every 30 minutes; manual sweeps keep their five-minute cooldown. Pending sightings now live at the bottom of Scan. Sightings and auto activity show up to 100 entries in pages of 20."
+VERSION_CODE = 38
+VERSION_NAME = "0.13.0"
+NOTES = ("Sign in from the app, a new Account tab, and Google Play release preparation. "
+         "Sideloaded builds before 0.13.0 use an old signing key: uninstall them once before installing this version.")
+PLAY_URL = "https://play.google.com/store/apps/details?id=net.wavebeasts.app"

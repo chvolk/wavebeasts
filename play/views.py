@@ -1,3 +1,5 @@
+from . import journals, node_health
+from .activity import audit
 import hashlib
 import json
 import random
@@ -17,6 +19,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 from django.core.cache import cache
@@ -144,12 +147,21 @@ def _clerk_ctx():
     return {"clerk_pk": settings.CLERK_PUBLISHABLE_KEY, "clerk_host": clerkauth.frontend_api_host()}
 
 
+def _safe_next(request, value=None):
+    """Only same-origin relative paths may be used as a post-sign-in destination."""
+    nxt = (value if value is not None else request.GET.get("next", "")) or ""
+    if nxt.startswith("/") and not nxt.startswith("//") and url_has_allowed_host_and_scheme(
+            nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return nxt
+    return ""
+
+
 def sign_in(request):
-    return render(request, "auth.html", {**_clerk_ctx(), "mode": "sign-in", "nav": ""})
+    return render(request, "auth.html", {**_clerk_ctx(), "mode": "sign-in", "nav": "", "next": _safe_next(request)})
 
 
 def sign_up(request):
-    return render(request, "auth.html", {**_clerk_ctx(), "mode": "sign-up", "nav": ""})
+    return render(request, "auth.html", {**_clerk_ctx(), "mode": "sign-up", "nav": "", "next": _safe_next(request)})
 
 
 @csrf_exempt
@@ -158,7 +170,9 @@ def auth_clerk(request):
     if request.method != "POST":
         return JsonResponse({"error": "POST only"}, status=405)
     try:
-        token = json.loads(request.body.decode("utf-8")).get("token", "")
+        body = json.loads(request.body.decode("utf-8"))
+        token = body.get("token", "")
+        nxt = _safe_next(request, str(body.get("next") or ""))
     except Exception:
         return JsonResponse({"error": "bad json"}, status=400)
     claims = clerkauth.verify_clerk_token(token)
@@ -172,6 +186,8 @@ def auth_clerk(request):
         InventoryItem.objects.get_or_create(user=user, item_id="spark_drive", defaults={"qty": 3})
     clerkauth.sync_profile(user)  # refresh verified identity, including primary email
     login(request, user)
+    if nxt:
+        return JsonResponse({"ok": True, "redirect": nxt})
     return JsonResponse({"ok": True, "redirect": "/me/" if _wallet(user).onboarded else "/onboarding/"})
 
 
@@ -186,6 +202,8 @@ def onboarding(request):
     if request.method == "POST":
         w.onboarded = True
         w.save(update_fields=["onboarded"])
+        if request.headers.get("Accept") == "application/json":
+            return JsonResponse({"ok": True})
         return redirect("dashboard")
     return render(request, "onboarding.html", {"nav": "", **_clerk_ctx()})
 
@@ -194,8 +212,11 @@ def onboarding(request):
 
 @login_required
 def billing(request):
+    from . import playbilling
     w = _wallet(request.user)
     return render(request, "billing.html", {"nav": "", "wallet": w, "active": w.subscribed,
+                                            "via_play": w.billing_provider == "play",
+                                            "play_manage_url": playbilling.manage_url(),
                                             "msg": request.session.pop("billing_msg", "")})
 
 
@@ -204,6 +225,10 @@ def billing(request):
 def checkout(request):
     plan = request.POST.get("plan", "monthly")
     base = settings.SITE_URL
+    w = _wallet(request.user)
+    if w.billing_provider == "play" and w.subscribed:
+        request.session["billing_msg"] = "Premium is managed through Google Play on your Android device."
+        return redirect("billing")
     try:
         url = billing_mod.checkout_url(_wallet(request.user), request.user, plan,
                                        base + "/billing/?ok=1", base + "/billing/?cancel=1")
@@ -243,11 +268,17 @@ def stripe_webhook(request):
 def app_version(request):
     """Version manifest the Android app polls to prompt for updates."""
     from . import appversion
+    from .client_updates import LISTENER_VERSION, MIN_ENGINE_CODE, MIN_ENGINE_VERSION, MIN_LISTENER_VERSION
     return JsonResponse({
+        "listener_version": LISTENER_VERSION,
+        "minimum_engine_version": MIN_ENGINE_VERSION,
+        "minimum_engine_code": MIN_ENGINE_CODE,
+        "minimum_listener_version": MIN_LISTENER_VERSION,
         "version_code": appversion.VERSION_CODE,
         "version_name": appversion.VERSION_NAME,
         "notes": appversion.NOTES,
         "apk_url": settings.SITE_URL.rstrip("/") + "/download/app.apk",
+        "play_url": appversion.PLAY_URL,
     })
 
 
@@ -307,24 +338,27 @@ def beast_nickname(request, beast_id):
     return redirect("dashboard")
 
 
+def beast_filter_json(beast):
+    return json.dumps({"favorite": beast.favorite, "name": beast.name, "nickname": (beast.individual_json or {}).get("nickname", ""),
+                       "rarity": beast.rarity, "types": (beast.species_json or {}).get("types", []),
+                       "level": beast.level})
+
+
 @login_required
 def dashboard(request):
-    _cull_wilds(request.user)  # hide expired/overflow sightings on the web too
-    beasts = list(request.user.beasts.all())
+    beasts = list(request.user.beasts.filter(status="owned"))
     for beast in beasts:
         beast.display_hp = _hp_now(beast.individual_json or {})
+        beast.filter_json = beast_filter_json(beast)
     listed_ids = set(TradeListing.objects.filter(user=request.user, is_open=True).values_list("beast_id", flat=True))
     team = _wallet(request.user).team_ids or []
     return render(request, "beastiary.html", {
-        "owned": [b for b in beasts if b.status == "owned"],
-        "wild": [b for b in beasts if b.status == "wild"],
+        "owned": beasts, "goals": journals.goals(beasts),
         "wallet": _wallet(request.user),
         "items": list(request.user.items.filter(qty__gt=0)),
         "listed_ids": listed_ids,
         "team": team,
         "nav": "beastiary",
-        "catch_drives": _owned_drives(request.user),
-        "discovery_msg": request.session.pop("discovery_msg", ""),
     })
 
 
@@ -335,6 +369,7 @@ def _owned_drives(user):
 
 
 @transaction.atomic
+@audit('catch', 'Capture attempt')
 def _catch_sighting(user, beast_id, drive):
     beast = OwnedBeast.objects.select_for_update().filter(id=beast_id, user=user, status="wild").first()
     if not beast:
@@ -355,12 +390,14 @@ def _catch_sighting(user, beast_id, drive):
         beast.status = "owned"
         beast.expires_at = None
         beast.save(update_fields=["status", "expires_at"])
+        journals.remember(beast,"catch","Caught with "+drive.replace("_"," "))
     message = f"Caught {beast.name}!" if caught else f"{beast.name} broke free. The sighting is still in your queue."
     return {"ok": True, "caught": caught, "chance": round(chance, 2), "drive": drive,
             "remaining": inv.qty, "message": message, "beast": _beast_row(beast)}, 200
 
 
 @transaction.atomic
+@audit('dismiss', 'Sighting dismissed')
 def _dismiss_sighting(user, beast_id):
     beast = OwnedBeast.objects.select_for_update().filter(id=beast_id, user=user, status="wild").first()
     if not beast:
@@ -373,17 +410,21 @@ def _dismiss_sighting(user, beast_id):
 @login_required
 @require_POST
 def catch(request, beast_id):
-    result, _ = _catch_sighting(request.user, beast_id, request.POST.get("drive", "spark_drive"))
+    result, status = _catch_sighting(request.user, beast_id, request.POST.get("drive", "spark_drive"))
+    if request.headers.get("Accept") == "application/json":
+        return JsonResponse(result, status=status)
     request.session["discovery_msg"] = result.get("message") or result["error"]
-    return redirect("dashboard")
+    return redirect("/scan/#scan-finds")
 
 
 @login_required
 @require_POST
 def dismiss_sighting(request, beast_id):
-    result, _ = _dismiss_sighting(request.user, beast_id)
+    result, status = _dismiss_sighting(request.user, beast_id)
+    if request.headers.get("Accept") == "application/json":
+        return JsonResponse(result, status=status)
     request.session["discovery_msg"] = result.get("message") or result["error"]
-    return redirect("dashboard")
+    return redirect("/scan/#scan-finds")
 
 
 def sprite(request, beast_id):
@@ -403,10 +444,18 @@ def sprite(request, beast_id):
 
 @login_required
 def nodes(request):
+    from .client_updates import status
+    node_rows=list(request.user.nodes.all())
+    for row in node_rows:
+        row.update_status=status(row)
+        row.ready_in=row.seconds_until_ready()
+        if row.client_app == "wavebeast-node" and row.last_snapshot_at:
+            import math
+            row.ready_in=max(row.ready_in, math.ceil(1800-(timezone.now()-row.last_snapshot_at).total_seconds()))
     new_id = request.session.pop("new_token_id", None)
     new_node = request.user.nodes.filter(id=new_id).first() if new_id else None
     return render(request, "nodes.html", {
-        "nodes": list(request.user.nodes.all()),
+        "nodes": node_rows,
         "nodes_msg": request.session.pop("nodes_msg", ""),
         "new_node": new_node, "nav": "nodes"})
 
@@ -450,6 +499,7 @@ def node_app_token(request):
 
 @login_required
 @require_POST
+@audit('node', 'Manual scan boost')
 def node_boost(request, node_id):
     node = get_object_or_404(Node, id=node_id, user=request.user)
     if not _paid(request.user):
@@ -534,6 +584,7 @@ def trade_unlist(request, listing_id):
 
 @login_required
 @require_POST
+@audit('trade', 'Trade offer escrow')
 def trade_offer(request, listing_id):
     if not _paid(request.user):
         request.session["trade_msg"] = "Trading is a paid feature."
@@ -592,6 +643,7 @@ def trade_offer(request, listing_id):
 
 @login_required
 @require_POST
+@audit('trade', 'Trade completed')
 def trade_accept(request, offer_id):
     if not _paid(request.user):
         request.session["trade_msg"] = "Trading is a paid feature."
@@ -616,14 +668,18 @@ def trade_accept(request, offer_id):
         for tb in their_beasts:
             tb.user = request.user
             tb.status = "owned"
-            tb.save(update_fields=["user", "status"])
+            tb.favorite=False;tb.field_notes=""
+            tb.save(update_fields=["user", "status", "favorite", "field_notes"])
+            journals.remember(tb,"trade","Joined a new collection through trade")
         my_wallet.shards += offer.offered_shards
         my_wallet.cores += offer.offered_cores
         my_wallet.save(update_fields=["shards", "cores"])
         # give the offerer the listed beast
         my_beast.user = offer.from_user
         my_beast.status = "owned"
-        my_beast.save(update_fields=["user", "status"])
+        my_beast.favorite=False;my_beast.field_notes=""
+        my_beast.save(update_fields=["user", "status", "favorite", "field_notes"])
+        journals.remember(my_beast,"trade","Joined a new collection through trade")
         listing.is_open = False
         listing.save(update_fields=["is_open"])
         offer.status = "accepted"
@@ -646,6 +702,7 @@ def _detach_beasts(user, beast_ids):
     LadderTeam.objects.filter(user=user).update(fighters=[])
 
 
+@audit('trade', 'Trade escrow refunded')
 def _refund_offer(offer):
     """Return escrowed shards/cores to the offerer (beasts free themselves once status != pending)."""
     if offer.offered_shards or offer.offered_cores:
@@ -791,6 +848,7 @@ def set_team(request):
 
 @login_required
 @require_POST
+@audit('battle', 'Battle completed')
 def battle_fight(request):
     if not _paid(request.user):
         request.session["last_battle"] = {"error": "Battles are a paid feature."}
@@ -808,10 +866,14 @@ def battle_fight(request):
         if t:
             opp_name, opp_team = w.user.username, t
             break
-    if not opp_team:
+    gym_match = not opp_team
+    if gym_match:
         opp_team = _gym_team()
+    if gym_match and len(opp_team) != 3:
+        request.session["last_battle"] = {"error": "Could not assemble a full gym. Please try again."}
+        return redirect("battle")
     try:
-        res = resolver.battle_auto(my_team, opp_team)
+        res = resolver.battle_auto(my_team, opp_team, mode="gym" if gym_match else "", replay=True)
     except Exception as e:
         request.session["last_battle"] = {"error": f"Battle resolver unavailable: {e}"}
         return redirect("battle")
@@ -822,10 +884,12 @@ def battle_fight(request):
         w = _wallet(request.user)
         w.shards += reward
         w.save(update_fields=["shards"])
+    for b in request.user.beasts.filter(id__in=_wallet(request.user).team_ids, status="owned"):
+        journals.remember(b,"battle",f"Battle against {opp_name}: {outcome}",win=outcome=="win")
     BattleRecord.objects.create(user=request.user, opponent=opp_name, result=outcome,
                                 turns=res.get("turns", 0), reward=reward)
     request.session["last_battle"] = {"outcome": outcome, "opponent": opp_name, "reward": reward,
-                                      "turns": res.get("turns", 0), "log": res.get("log", [])[:12]}
+                                      "turns": res.get("turns", 0), "log": res.get("log", []), "replay": res}
     return redirect("battle")
 
 
@@ -850,20 +914,40 @@ def api_snapshot(request):
     return submit_snapshot(request, node, bundle)
 
 
+@audit('scan', 'Scan completed')
 def submit_snapshot(request, node, bundle):
     """Shared account-authoritative roll for API nodes and the manual browser scanner."""
+    from .client_updates import report, status
+    if not isinstance(bundle, dict):
+        return JsonResponse({"error": "Expected a scan object"}, status=400)
+    report(node, bundle)
+    node_health.attempt(node, bundle)
+    update = status(node)
+    if update.get("update_required"):
+        node_health.result(node, "update_required")
+        return JsonResponse({"accepted": False, "error": "update_required",
+                             "message": "Update this official client before scanning online. Your collection and inventory are unchanged.",
+                             **update, "download_url": settings.SITE_URL.rstrip("/")+"/download/"}, status=426)
+    client = bundle.get("client") or {}
+    passive = bundle.get("scan_mode") == "auto" or (isinstance(client, dict) and client.get("id") == "wavebeast-node")
     wait = node.seconds_until_ready()
+    if passive and node.last_snapshot_at:
+        import math
+        wait = max(wait, math.ceil(1800-(timezone.now()-node.last_snapshot_at).total_seconds()))
     if wait > 0:
+        node_health.result(node, wait=wait)
         return JsonResponse({"accepted": False, "error": "rate_limited", "retry_after": wait,
-                             "hint": "boost this node with cores to raise the rate"}, status=429)
+                             "hint": "Passive scans run every 30 minutes" if passive else "boost this node with cores to raise the rate"}, status=429)
     try:
         # Server-authoritative roll: a per-submission random nonce the client can't predict, so the
         # resulting stats can't be modded or ground out. Species stays deterministic from the bundle.
         res = resolver.generate(bundle, roll_nonce=secrets.token_hex(16))
     except Exception as e:
+        node_health.result(node, "resolver")
         return JsonResponse({"error": f"resolver unavailable: {e}"}, status=502)
     node.last_snapshot_at = timezone.now()
     node.save(update_fields=["last_snapshot_at"])
+    node_health.result(node, wait=max(1800,node.min_interval()) if passive else node.min_interval())
     outcome = res.get("outcome")
     extra = {}
     if outcome == "resource":
@@ -882,10 +966,11 @@ def submit_snapshot(request, node, bundle):
         detail = res.get("message", "")
     Snapshot.objects.create(node=node, outcome=outcome or "nothing", entropy=res.get("entropy", 0), detail=detail[:200])
     return JsonResponse({"accepted": True, "outcome": outcome, "detail": detail,
-                         "entropy": res.get("entropy", 0), "next_snapshot_in": node.min_interval(), **extra})
+                         "entropy": res.get("entropy", 0), "next_snapshot_in": max(1800,node.min_interval()) if passive else node.min_interval(), **extra})
 
 
 @csrf_exempt
+@audit('import', 'Collection imported')
 def api_import(request):
     """Upload a subscriber's local collection to their account (deduped by the local beast id). Trust the
     uploaded species/individual (subscription-gated) but cap IVs/level. Called by the engine's /node/upload."""
@@ -968,6 +1053,7 @@ def api_sync(request):
 
 
 @csrf_exempt
+@audit('release', 'Beast released')
 def api_release(request):
     """Release a beast back to the waves - permanently removes it from the account (node-token auth,
     free). Can't release your slotted buddy; also clears it from your team and any open trade listing."""
@@ -981,6 +1067,8 @@ def api_release(request):
     beast = OwnedBeast.objects.filter(id=data.get("beast_id"), user=node.user).first()
     if not beast:
         return JsonResponse({"error": "no such beast"}, status=404)
+    if beast.favorite:
+        return JsonResponse({"error":"Remove this beast from favorites before releasing it"},status=409)
     buddy = getattr(node.user, "buddy", None)
     if buddy and buddy.beast_id == beast.id:
         return JsonResponse({"error": "unslot your buddy before releasing it"}, status=409)
@@ -1031,6 +1119,7 @@ def api_buy(request):
     return JsonResponse(payload, status=status)
 
 
+@audit('shop', 'Shop purchase')
 def _buy_item(user, item_id, qty):
     """Server-authoritative purchase from account currency. Price comes from the engine catalog and the
     balance is checked here, so nothing about the cost is client-set. Shared by the node API and the web
@@ -1099,6 +1188,25 @@ def shop_buy(request):
     return redirect("shop")
 
 
+def account_summary(user, w=None):
+    """The private account dict shared by /api/account and /api/billing/play/verify."""
+    from . import playbilling
+    w = w or _wallet(user)
+    via_play = w.billing_provider == "play"
+    return {
+        "name": user.first_name or user.username, "email": user.email or None,
+        "plan": "Premium" if w.subscribed else "Free", "subscribed": w.subscribed,
+        "subscription_status": w.subscription_status or ("active" if w.subscribed else "free"),
+        "shards": w.shards, "cores": w.cores,
+        "beasts": user.beasts.filter(status="owned").count(), "nodes": user.nodes.count(),
+        "node_limit": PAID_NODE_LIMIT if w.subscribed else FREE_NODE_LIMIT,
+        "billing_provider": w.billing_provider,
+        "renews_at": w.play_expires_at.isoformat() if via_play and w.play_expires_at else None,
+        # Stripe portal URLs are only ever minted on the website; the app sees a manage link for Play only.
+        "manage_url": playbilling.manage_url() if via_play else None,
+    }
+
+
 @require_GET
 def api_account(request):
     """Private linked-account summary. Available to free and paid devices."""
@@ -1110,14 +1218,9 @@ def api_account(request):
     if not user.email and user.username.startswith("user_") and cache.add(f"profile-backfill:{user.pk}", True, 300):
         clerkauth.sync_profile(user)
     w = _wallet(user)
-    response = JsonResponse({"ok": True, "account": {
-        "name": user.first_name or user.username, "email": user.email or None,
-        "plan": "Premium" if w.subscribed else "Free", "subscribed": w.subscribed,
-        "subscription_status": w.subscription_status or ("active" if w.subscribed else "free"),
-        "shards": w.shards, "cores": w.cores,
-        "beasts": user.beasts.filter(status="owned").count(), "nodes": user.nodes.count(),
-        "node_limit": PAID_NODE_LIMIT if w.subscribed else FREE_NODE_LIMIT,
-    }, "node": {"name": node.name, "kind": node.kind, "next_snapshot_in": node.seconds_until_ready()},
+    response = JsonResponse({"ok": True, "account": account_summary(user, w),
+        "node": {"name": node.name, "kind": node.kind, "next_snapshot_in": node.seconds_until_ready()},
+        "node_health": [node_health.row(n) for n in user.nodes.all()],
         "recent_snapshots": [{"id": item.id, "node_name": item.node.name,
             "at": item.at.isoformat(), "outcome": item.outcome, "detail": item.detail}
             for item in Snapshot.objects.filter(node__user=user).select_related("node")
@@ -1164,7 +1267,7 @@ def api_beast(request, beast_id):
     row = _beast_row(b)
     ind = dict(b.individual_json or {})
     ind["id"] = str(b.id)
-    row.update({"id": str(b.id), "species": b.species_json, "individual": ind,
+    row.update({"journal": journals.profile(b), "id": str(b.id), "species": b.species_json, "individual": ind,
                 "xp": ind.get("xp", 0), "next": b.level ** 3 * 15,
                 "moves": ind.get("moves", []), "tribe": (b.species_json or {}).get("tribe", "")})
     response = JsonResponse(row)
@@ -1175,6 +1278,7 @@ def api_beast(request, beast_id):
 @csrf_exempt
 @require_POST
 @transaction.atomic
+@audit('train', 'Training')
 def api_train(request):
     node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
     if not node:
@@ -1201,12 +1305,13 @@ def api_train(request):
     b.individual_json = ind
     b.level = ind.get("level", b.level)
     b.save(update_fields=["individual_json", "level"])
+    journals.remember(b,"train",f"Trained with {item}: +{xp} XP; level {b.level}")
     return JsonResponse({"ok": True, "beast": _beast_row(b), "xp_gained": xp, "levels_gained": levels})
 
 def _beast_row(b):
     ind = b.individual_json or {}
     hp = _hp_now(ind)
-    row = {"id": b.id, "name": b.name, "rarity": b.rarity, "shiny": b.shiny, "level": b.level,
+    row = {"favorite": b.favorite, "traits": journals.traits(b), "id": b.id, "name": b.name, "rarity": b.rarity, "shiny": b.shiny, "level": b.level,
            "species_id": b.species_id, "verified": b.verified, "status": b.status,
            "types": (b.species_json or {}).get("types", []), "nickname": ind.get("nickname", ""),
            "nature": ind.get("nature", ""), "hp": hp, "hp_max": HP_MAX, "fainted": hp <= 0}
@@ -1252,6 +1357,7 @@ def api_dismiss_sighting(request):
 
 
 @csrf_exempt
+@audit('heal', 'Potion used')
 def api_heal(request):
     """Heal a beast to full by spending a Potion from the bag (node-token auth). Health also regenerates
     over time on its own; this is the instant option."""
@@ -1316,6 +1422,7 @@ def _buddy_auth(request):
 @csrf_exempt
 @require_GET
 @transaction.atomic
+@audit('buddy', 'Buddy away rewards')
 def api_buddy(request):
     """GET the current buddy + any away-events accrued since the last poll (server-rolled, rate-limited)."""
     node, err = _buddy_auth(request)
@@ -1328,6 +1435,8 @@ def api_buddy(request):
     events = buddymod.accrue_events(b, w, b.beast) if b.beast_id else []
     if b.beast_id and b.beast:
         b.beast.save()
+        for event in events:
+            journals.remember(b.beast,"buddy",event.get("detail","Buddy adventure"),win=True if event.get("type")=="combat" else None)
     w.save()
     b.save()
     return JsonResponse({"ok": True, "buddy": buddymod.state(b), "events": events,
@@ -1373,6 +1482,7 @@ def api_buddy_slot(request):
 @csrf_exempt
 @require_POST
 @transaction.atomic
+@audit('buddy', 'Buddy care')
 def api_buddy_care(request):
     """Apply a care action (feed/play/rest/clean/train) to the slotted buddy."""
     node, err = _buddy_auth(request)
@@ -1396,6 +1506,7 @@ def api_buddy_care(request):
         return JsonResponse({"error": res["error"]}, status=400)
     if b.beast:
         b.beast.save()
+        journals.remember(b.beast,"care","Buddy care: "+str(data.get("action","")))
     b.save()
     return JsonResponse({"ok": True, "result": res, "buddy": buddymod.state(b)})
 
@@ -1454,7 +1565,7 @@ def _create_beast(node, sp, ind, status):
         user=node.user, node=node, species_id=sp.get("species_id", ""), id_version=sp.get("id_version", 1),
         name=sp.get("name", "?"), rarity=ind.get("rarity", "common"), shiny=bool(ind.get("shiny")),
         level=ind.get("level", 1), status=status, verified=True, species_json=sp, individual_json=ind,
-        expires_at=expires)
+        expires_at=expires, journal_data={"origin":{"at":timezone.now().isoformat(),"device":node.name,"signals":[s["name"] for s in node.sensors]}, "events":[{"at":timezone.now().isoformat(),"kind":"discovery","text":"Discovered by "+node.name}]})
 
 
 def _apply_beast(node, res):
@@ -1474,10 +1585,13 @@ def _apply_beast(node, res):
         fighters = [_fighter(b) for b in party_beasts]
         try:
             won = resolver.battle_auto(fighters, [{"species": sp, "individual": ind}]).get("winner") == "a"
+            resolved=True
         except Exception:
             won = True  # don't punish the player if the resolver hiccups
+            resolved=False
         for b in party_beasts:  # a fight costs the whole party some health either way
             _set_hp(b, _hp_now(b.individual_json or {}) - HP_BATTLE_COST)
+            if resolved:journals.remember(b,"battle",f"Wild encounter with {sp.get('name','a beast')}: {'won' if won else 'lost'}",win=won)
         if not won:
             return {"detail": f"{sp.get('name')} bested your team and fled",
                     "beast": None, "caught": False, "fled": True, "battled": True}
@@ -1487,3 +1601,21 @@ def _apply_beast(node, res):
     b = _create_beast(node, sp, ind, "wild")
     return {"detail": f"sighted {sp.get('name')} [{ind.get('rarity')}]",
             "beast": _beast_row(b), "caught": False, "fled": False, "battled": False}
+
+
+@csrf_exempt
+@require_POST
+def node_check_in(request):
+    from .client_updates import report, status
+    node = Node.objects.filter(token=request.headers.get("X-WB-Node-Token", "")).first()
+    if not node:
+        return JsonResponse({"error": "bad node token"}, status=403)
+    if len(request.body)>4096:
+        return JsonResponse({"error": "Report too large"}, status=400)
+    try:
+        body=json.loads(request.body)
+        report(node, body)
+        node_health.report(node, body)
+    except (ValueError, TypeError):
+        return JsonResponse({"error": "Invalid version report"}, status=400)
+    return JsonResponse({**status(node), "passive_interval_sec": 1800})

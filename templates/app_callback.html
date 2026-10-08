@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Finishing sign-in · WaveBeasts{% endblock %}
+{% block content %}
+<div style="max-width:460px;margin:16px auto">
+  <div class="card" style="text-align:center">
+    <div class="eyebrow">WaveBeasts app</div>
+    {% if deep_link %}
+    <h1 class="wordmark" style="margin:6px 0 12px">Finishing sign-in…</h1>
+    <p class="muted" style="font-size:13.5px;margin:0 0 18px">If the app did not open by itself, tap the button below.</p>
+    <a class="btn" href="{{ deep_link }}" id="open-app" style="width:100%;display:inline-flex">Open WaveBeasts</a>
+    <p class="muted" style="font-size:12.5px;margin:16px 0 0">This sign-in code expires in {{ ttl_min }} minutes.</p>
+    <p class="muted" style="font-size:12.5px;margin:8px 0 0">Don't have the app? <a href="{{ play_url }}" rel="noopener">Get it on Google Play</a>.</p>
+    <script>setTimeout(function(){ location.href = document.getElementById('open-app').getAttribute('href'); }, 300);</script>
+    {% else %}
+    <h1 class="wordmark" style="margin:6px 0 12px">Sign-in link invalid</h1>
+    <p class="muted" style="font-size:13.5px">Start the sign-in again from the app.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

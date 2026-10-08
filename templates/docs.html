@@ -7,6 +7,7 @@
 <div class="eyebrow">WaveBeasts / Field manual</div>
 <div class="wiki-layout">
   <aside class="wiki-sidebar"><nav aria-label="Wiki pages">
+    {% if user.is_authenticated %}<button class="btn sec sm" type="button" data-replay-tutorial>Replay tutorial</button>{% endif %}
     <a class="wiki-ai {% if wiki_slug == 'ai-setup' %}on{% endif %}" href="/docs/ai-setup/" {% if wiki_slug == 'ai-setup' %}aria-current="page"{% endif %}><span>QUICK START ↗</span>Set up with an AI agent</a>
     {% regroup wiki_pages by group as groups %}
     {% for group in groups %}<div class="wiki-group">{{ group.grouper }}</div>{% for item in group.list %}{% if item.slug != 'ai-setup' %}<a href="{{ item.url }}" {% if wiki_slug == item.slug %}class="on" aria-current="page"{% endif %}>{{ item.title }}</a>{% endif %}{% endfor %}{% endfor %}

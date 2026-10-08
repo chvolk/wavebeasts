@@ -67,7 +67,7 @@ sideload users: 0.13.0 uses a new signing key, so uninstall the old build once b
 |---|---|
 | Category | Games › Casual |
 | Tags | Collecting, Monster, Augmented reality (light), Pixel art, Offline |
-| Contact email | `jwest@jameswest.space` (placeholder — set up this mailbox or replace) |
+| Contact email | `jwest@jameswest.space` |
 | Website | https://wavebeasts.com |
 | Privacy policy | https://wavebeasts.com/privacy/ |
 | Account deletion | https://wavebeasts.com/me/delete |

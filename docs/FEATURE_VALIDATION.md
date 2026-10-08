@@ -216,3 +216,17 @@ stay on Scan and reload its finds rather than navigating to Beastiary.
 Validation: 106 Django cases (103 default plus three separately passing real-resolver integration
 cases); Chromium at 390px verifies 20-card pages, filtered page links, catch/dismiss navigation,
 owned-only collection, table scrolling, no horizontal overflow and no JavaScript errors.
+
+## 0.13.0 Play release groundwork (2026-10-08)
+
+Android app 0.13.0 / build 38 is signed with the release key, built as a Play AAB and a sideload
+APK, and published to the public downloads release alongside the six engine binaries. The site
+serves `/.well-known/assetlinks.json`, the `/app/connect` + `/app/callback` link flow, account
+deletion, Play purchase verification, and the RTDN webhook (fail-closed once Play is configured).
+
+Validation: Django 187 tests (3 skips) and the Go suite pass. On a Samsung SM-S948U running
+Android 17 the App Link verified, the in-app sign-in round trip (Custom Tab → Clerk → Connect →
+callback) linked the account, and the Account tab showed the live profile and device list.
+Railway `PLAY_*` variables are set; the live webhook rejects unauthenticated posts with 401.
+A Play test purchase is pending the Play Console subscription setup.
+

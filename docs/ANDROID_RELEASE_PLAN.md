@@ -253,3 +253,21 @@ purchases don't charge. (5) Schedule `play_reconcile` daily on Railway.
   `PLAY_RTDN_SERVICE_ACCOUNT`, optionally `ANDROID_CERT_SHA256`). No Railway CLI on this Pi.
 - Remaining engineering: store assets + listing copy + data safety (in progress under
   `docs/store/`), device QA of sign-in and a test purchase, validation record, merge to main.
+
+## Status 2026-10-08
+
+- Both repos merged to `main` and pushed; site deployed (`/api/app/version` → 38, assetlinks
+  served). Public downloads release `chvolk/wavebeast-dl` v1 carries the 0.13.0 engines and the
+  signed sideload APK; the iOS asset was removed.
+- Railway has the four `PLAY_*` variables; `/webhooks/play` now answers 401 to unauthenticated
+  posts (fail-closed path active).
+- Device QA on a Samsung SM-S948U (Android 17): Android verified the App Link
+  (`pm get-app-links` → `wavebeasts.com: verified`). Account tab → Custom Tab sign-in →
+  Connect → App Link callback linked the account; the Account tab showed the online profile,
+  Premium status, counters and this device. The site listed the phone as "heartbeat unavailable"
+  until the two-minute auto-loop tick; the engine now heartbeats immediately after linking.
+  The Android shell also stops asking for a Wi-Fi scan every second (now one per 30s).
+- Still owner-only: Play Console App Signing with the existing key, API access grant for
+  `play-verify@…`, subscription `premium` (`monthly`/`annual`), RTDN topic + test notification,
+  license testers, upload `dist/wavebeast-play.aab` to internal testing, then a test purchase.
+

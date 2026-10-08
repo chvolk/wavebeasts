@@ -20,6 +20,15 @@ class Wallet(models.Model):
     subscribed = models.BooleanField(default=False)  # driven by the Stripe subscription status below
     stripe_customer_id = models.CharField(max_length=64, blank=True, default="")
     subscription_status = models.CharField(max_length=32, blank=True, default="")  # active/trialing/past_due/canceled/...
+    billing_provider = models.CharField(max_length=16, blank=True, default="")  # ""|stripe|play - one provider at a time
+    # Google Play subscription (Android app). Token fields are kept after expiry for audit.
+    play_purchase_token = models.CharField(max_length=512, blank=True, default="", db_index=True)
+    play_product_id = models.CharField(max_length=64, blank=True, default="")
+    play_base_plan = models.CharField(max_length=32, blank=True, default="")
+    play_expires_at = models.DateTimeField(null=True, blank=True)
+    play_auto_renewing = models.BooleanField(default=False)
+    play_linked_at = models.DateTimeField(null=True, blank=True)
+    play_obfuscated_id = models.CharField(max_length=64, blank=True, default="", db_index=True)  # HMAC(user id) sent with purchases
     onboarded = models.BooleanField(default=False)
     last_sync = models.DateTimeField(null=True, blank=True)  # once-per-day standardize-old-beasts run
 
@@ -96,6 +105,29 @@ class Node(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.kind})"
+
+
+def gen_link_code():
+    return secrets.token_urlsafe(32)
+
+
+class LinkCode(models.Model):
+    """One-time, short-lived code minted by /app/connect after a signed-in user approves connecting a
+    device. The app exchanges it (with the state nonce it generated) for the node token, so the token
+    itself never travels through a deep link."""
+    TTL_SEC = 300
+    code = models.CharField(max_length=43, unique=True, default=gen_link_code)
+    state = models.CharField(max_length=128)
+    node = models.ForeignKey(Node, on_delete=models.CASCADE, related_name="link_codes")
+    created = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
+
+    def is_valid(self):
+        return self.used_at is None and not self.is_expired()
 
 
 class Snapshot(models.Model):

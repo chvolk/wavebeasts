@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, pwa, scanner, fieldbook
+from . import views, pwa, scanner, fieldbook, applink, playviews
 
 urlpatterns = [
     path("activity/", fieldbook.activity, name="activity"),
@@ -22,6 +22,12 @@ urlpatterns = [
     path("download/wavebeast-node.py", views.node_client, name="node_client"),
     path("download/app.apk", views.app_apk, name="app_apk"),
     path("api/app/version", views.app_version, name="app_version"),
+    path("app/connect", applink.connect, name="app_connect"),
+    path("app/callback", applink.callback, name="app_callback"),
+    path("api/app/link/exchange", applink.exchange, name="app_link_exchange"),
+    path("api/account/delete", applink.api_delete, name="api_account_delete"),
+    path("me/delete", applink.web_delete, name="account_delete"),
+    path(".well-known/assetlinks.json", applink.assetlinks, name="assetlinks"),
     path("signup/", views.signup, name="signup"),
     path("sign-in/", views.sign_in, name="sign_in"),
     path("sign-up/", views.sign_up, name="sign_up"),
@@ -31,6 +37,9 @@ urlpatterns = [
     path("billing/checkout", views.checkout, name="checkout"),
     path("billing/portal", views.billing_portal, name="billing_portal"),
     path("webhooks/stripe", views.stripe_webhook, name="stripe_webhook"),
+    path("api/billing/play/verify", playviews.verify, name="play_verify"),
+    path("api/billing/offers", playviews.offers, name="billing_offers"),
+    path("webhooks/play", playviews.webhook, name="play_webhook"),
     path("scan/", scanner.page, name="scanner"),
     path("api/browser/scan", scanner.scan, name="browser_scan"),
     path("me/", views.dashboard, name="dashboard"),

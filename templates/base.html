@@ -193,6 +193,7 @@
     {% if clerk_pk %}<div id="clerk-userbtn" style="display:flex;align-items:center"></div>
     <form method="post" action="/logout/" id="clerk-signout-fallback" style="display:none;margin:0">{% csrf_token %}<button class="btn sec sm" type="submit">Sign out</button></form>
     {% else %}<form method="post" action="/logout/" style="display:inline;margin:0">{% csrf_token %}<button class="btn sec sm" type="submit">Sign out</button></form>{% endif %}
+    <a class="btn sec sm" href="/me/delete" title="Delete account" style="color:var(--dim)">Delete account</a>
   </div>
   {% else %}
   <div class="right">

@@ -176,6 +176,18 @@ STRIPE_PRICE_MONTHLY = os.environ.get("STRIPE_PRICE_MONTHLY", "")
 STRIPE_PRICE_ANNUAL = os.environ.get("STRIPE_PRICE_ANNUAL", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 SITE_URL = os.environ.get("SITE_URL", "https://wavebeasts.com")
+# Android App Links (/.well-known/assetlinks.json): the release signing certificate(s), comma-separated.
+ANDROID_PACKAGE = "net.wavebeasts.app"
+ANDROID_CERT_SHA256 = os.environ.get(
+    "ANDROID_CERT_SHA256",
+    "06:5F:AC:93:8F:94:73:31:00:E9:0E:92:F5:AA:42:A2:50:F5:2C:43:A6:BB:F1:DF:64:A9:07:26:CF:B5:AE:FB")
+# Google Play Billing (Android app Premium). All optional: dev/test run without them.
+PLAY_PACKAGE_NAME = os.environ.get("PLAY_PACKAGE_NAME", ANDROID_PACKAGE)
+PLAY_SERVICE_ACCOUNT_JSON = os.environ.get("PLAY_SERVICE_ACCOUNT_JSON", "")  # base64 or raw key JSON
+PLAY_RTDN_AUDIENCE = os.environ.get("PLAY_RTDN_AUDIENCE", SITE_URL.rstrip("/") + "/webhooks/play")
+PLAY_RTDN_SERVICE_ACCOUNT = os.environ.get("PLAY_RTDN_SERVICE_ACCOUNT", "")  # push SA email; empty = no auth check
+PLAY_PRODUCT_ID = os.environ.get("PLAY_PRODUCT_ID", "premium")
+PLAY_BASE_PLANS = ("monthly", "annual")
 # Managed Payments: Stripe is merchant of record + auto-remits tax. Rides a preview API version and
 # adds managed_payments[enabled]=true at Checkout. OFF by default so it never flips live billing on
 # deploy — set STRIPE_MANAGED_PAYMENTS=1 (with the tax_code set on the product) to turn it on.

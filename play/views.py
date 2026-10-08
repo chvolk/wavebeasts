@@ -19,6 +19,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 from django.core.cache import cache
@@ -146,12 +147,21 @@ def _clerk_ctx():
     return {"clerk_pk": settings.CLERK_PUBLISHABLE_KEY, "clerk_host": clerkauth.frontend_api_host()}
 
 
+def _safe_next(request, value=None):
+    """Only same-origin relative paths may be used as a post-sign-in destination."""
+    nxt = (value if value is not None else request.GET.get("next", "")) or ""
+    if nxt.startswith("/") and not nxt.startswith("//") and url_has_allowed_host_and_scheme(
+            nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return nxt
+    return ""
+
+
 def sign_in(request):
-    return render(request, "auth.html", {**_clerk_ctx(), "mode": "sign-in", "nav": ""})
+    return render(request, "auth.html", {**_clerk_ctx(), "mode": "sign-in", "nav": "", "next": _safe_next(request)})
 
 
 def sign_up(request):
-    return render(request, "auth.html", {**_clerk_ctx(), "mode": "sign-up", "nav": ""})
+    return render(request, "auth.html", {**_clerk_ctx(), "mode": "sign-up", "nav": "", "next": _safe_next(request)})
 
 
 @csrf_exempt
@@ -160,7 +170,9 @@ def auth_clerk(request):
     if request.method != "POST":
         return JsonResponse({"error": "POST only"}, status=405)
     try:
-        token = json.loads(request.body.decode("utf-8")).get("token", "")
+        body = json.loads(request.body.decode("utf-8"))
+        token = body.get("token", "")
+        nxt = _safe_next(request, str(body.get("next") or ""))
     except Exception:
         return JsonResponse({"error": "bad json"}, status=400)
     claims = clerkauth.verify_clerk_token(token)
@@ -174,6 +186,8 @@ def auth_clerk(request):
         InventoryItem.objects.get_or_create(user=user, item_id="spark_drive", defaults={"qty": 3})
     clerkauth.sync_profile(user)  # refresh verified identity, including primary email
     login(request, user)
+    if nxt:
+        return JsonResponse({"ok": True, "redirect": nxt})
     return JsonResponse({"ok": True, "redirect": "/me/" if _wallet(user).onboarded else "/onboarding/"})
 
 
@@ -198,8 +212,11 @@ def onboarding(request):
 
 @login_required
 def billing(request):
+    from . import playbilling
     w = _wallet(request.user)
     return render(request, "billing.html", {"nav": "", "wallet": w, "active": w.subscribed,
+                                            "via_play": w.billing_provider == "play",
+                                            "play_manage_url": playbilling.manage_url(),
                                             "msg": request.session.pop("billing_msg", "")})
 
 
@@ -208,6 +225,10 @@ def billing(request):
 def checkout(request):
     plan = request.POST.get("plan", "monthly")
     base = settings.SITE_URL
+    w = _wallet(request.user)
+    if w.billing_provider == "play" and w.subscribed:
+        request.session["billing_msg"] = "Premium is managed through Google Play on your Android device."
+        return redirect("billing")
     try:
         url = billing_mod.checkout_url(_wallet(request.user), request.user, plan,
                                        base + "/billing/?ok=1", base + "/billing/?cancel=1")
@@ -257,6 +278,7 @@ def app_version(request):
         "version_name": appversion.VERSION_NAME,
         "notes": appversion.NOTES,
         "apk_url": settings.SITE_URL.rstrip("/") + "/download/app.apk",
+        "play_url": appversion.PLAY_URL,
     })
 
 
@@ -1166,6 +1188,25 @@ def shop_buy(request):
     return redirect("shop")
 
 
+def account_summary(user, w=None):
+    """The private account dict shared by /api/account and /api/billing/play/verify."""
+    from . import playbilling
+    w = w or _wallet(user)
+    via_play = w.billing_provider == "play"
+    return {
+        "name": user.first_name or user.username, "email": user.email or None,
+        "plan": "Premium" if w.subscribed else "Free", "subscribed": w.subscribed,
+        "subscription_status": w.subscription_status or ("active" if w.subscribed else "free"),
+        "shards": w.shards, "cores": w.cores,
+        "beasts": user.beasts.filter(status="owned").count(), "nodes": user.nodes.count(),
+        "node_limit": PAID_NODE_LIMIT if w.subscribed else FREE_NODE_LIMIT,
+        "billing_provider": w.billing_provider,
+        "renews_at": w.play_expires_at.isoformat() if via_play and w.play_expires_at else None,
+        # Stripe portal URLs are only ever minted on the website; the app sees a manage link for Play only.
+        "manage_url": playbilling.manage_url() if via_play else None,
+    }
+
+
 @require_GET
 def api_account(request):
     """Private linked-account summary. Available to free and paid devices."""
@@ -1177,14 +1218,8 @@ def api_account(request):
     if not user.email and user.username.startswith("user_") and cache.add(f"profile-backfill:{user.pk}", True, 300):
         clerkauth.sync_profile(user)
     w = _wallet(user)
-    response = JsonResponse({"ok": True, "account": {
-        "name": user.first_name or user.username, "email": user.email or None,
-        "plan": "Premium" if w.subscribed else "Free", "subscribed": w.subscribed,
-        "subscription_status": w.subscription_status or ("active" if w.subscribed else "free"),
-        "shards": w.shards, "cores": w.cores,
-        "beasts": user.beasts.filter(status="owned").count(), "nodes": user.nodes.count(),
-        "node_limit": PAID_NODE_LIMIT if w.subscribed else FREE_NODE_LIMIT,
-    }, "node": {"name": node.name, "kind": node.kind, "next_snapshot_in": node.seconds_until_ready()},
+    response = JsonResponse({"ok": True, "account": account_summary(user, w),
+        "node": {"name": node.name, "kind": node.kind, "next_snapshot_in": node.seconds_until_ready()},
         "node_health": [node_health.row(n) for n in user.nodes.all()],
         "recent_snapshots": [{"id": item.id, "node_name": item.node.name,
             "at": item.at.isoformat(), "outcome": item.outcome, "detail": item.detail}

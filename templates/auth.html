@@ -12,11 +12,12 @@
 </div>
 <script>
 (function(){
+  var NEXT='{{ next|escapejs }}';
   function getCsrf(){ var m=document.cookie.match(/csrftoken=([^;]+)/); return m?m[1]:''; }
   async function exchange(clerk){
     try{
       var t = await clerk.session.getToken();
-      var r = await fetch('/auth/clerk',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},body:JSON.stringify({token:t})});
+      var r = await fetch('/auth/clerk',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},body:JSON.stringify({token:t,next:NEXT})});
       if(r.ok){ var d=await r.json(); location.href=d.redirect||'/me/'; }
       else { document.getElementById('clerk-fallback').textContent='Could not complete sign-in.'; }
     }catch(e){ document.getElementById('clerk-fallback').textContent='Sign-in error.'; }
@@ -26,7 +27,7 @@
     window.__wbClerkLoaded = true;
     if(clerk.user){ return exchange(clerk); }
     var el=document.getElementById('clerk-auth'); if(!el) return;
-    var opts={afterSignInUrl:'{{ request.path }}', afterSignUpUrl:'{{ request.path }}'};
+    var opts={afterSignInUrl:'{{ request.get_full_path|escapejs }}', afterSignUpUrl:'{{ request.get_full_path|escapejs }}'};
     {% if mode == 'sign-up' %}clerk.mountSignUp(el,opts);{% else %}clerk.mountSignIn(el,opts);{% endif %}
     clerk.addListener(function(e){ if(e.user) exchange(clerk); });
   };

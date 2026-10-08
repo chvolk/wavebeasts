@@ -6,3 +6,4 @@ dj-database-url>=2.1
 psycopg2-binary>=2.9
 stripe>=10
 PyJWT[crypto]>=2.8
+google-auth>=2.30

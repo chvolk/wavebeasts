@@ -104,15 +104,23 @@ def apply_event(event):
     w = Wallet.objects.filter(stripe_customer_id=cust).first()
     if not w:
         return False
+    if w.billing_provider == "play" and w.subscribed:
+        # Premium is already active through Google Play; never let a second provider double-bill.
+        import logging
+        logging.getLogger(__name__).warning("stripe event %s ignored: wallet %s is subscribed via Play", etype, w.pk)
+        return False
     if etype.startswith("customer.subscription."):
         status = obj.get("status", "")
         w.subscription_status = status
         w.subscribed = status in ACTIVE
-        w.save(update_fields=["subscription_status", "subscribed"])
+        if w.subscribed:
+            w.billing_provider = "stripe"
+        w.save(update_fields=["subscription_status", "subscribed", "billing_provider"])
         return True
     if etype == "checkout.session.completed":
         w.subscription_status = "active"
         w.subscribed = True
-        w.save(update_fields=["subscription_status", "subscribed"])
+        w.billing_provider = "stripe"
+        w.save(update_fields=["subscription_status", "subscribed", "billing_provider"])
         return True
     return False

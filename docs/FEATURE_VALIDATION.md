@@ -230,3 +230,22 @@ callback) linked the account, and the Account tab showed the live profile and de
 Railway `PLAY_*` variables are set; the live webhook rejects unauthenticated posts with 401.
 A Play test purchase is pending the Play Console subscription setup.
 
+
+## Two-phone trade, battle and ladder QA (2026-10-08)
+
+A second account (`cvolk`, Samsung SM-G986U, Firefox) was comped Premium through the Django admin
+(`/admin/`, superuser bootstrapped by `ensure_admin`; `grant_premium` is the CLI equivalent). With
+the first account (`chambersvolk`, SM-S948U, Chrome) both signed in on the website:
+
+- Trade: account 1 had Snijeokip listed; account 2 offered 20 shards (escrowed, balance 50 → 30);
+  account 1 accepted (+20 shards); the beast moved to account 2's team picker.
+- Battle: account 2's one-beast team fought the Gym (loss) while account 1 had no saved team, then
+  beat account 1's saved team once it existed (victory, +32 shards, recent-battles row).
+- Ladder: both entered at 1000 MMR; "Run 5 matches" from each side ran the one available pairing
+  per click (account 2 finished 2–0 at 1023, account 1 0–2 at 977).
+
+Fixes that fell out of it: Wallet admin could not save (JSONField `team_ids` required a value; now
+read-only), player names replaced raw Clerk ids on the market, offers, ladder table and ladder
+results, the offer form's shards/cores inputs gained labels, ladder deltas show their sign, and
+signed-in pages are sent `Cache-Control: private, no-store` after Firefox served a stale battle
+page from its HTTP cache. Validation: Django suite green after each change.

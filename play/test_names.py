@@ -20,3 +20,10 @@ class PlayerNameTests(TestCase):
         out = Template("{% load players %}by {{ u|player_name }}").render(Context({"u": u}))
         self.assertEqual(out, "by Zed")
         self.assertNotIn("user_", out)
+
+
+    def test_opponent_label_resolves_legacy_ids(self):
+        User.objects.create_user("user_legacy01", first_name="Legacy")
+        out = Template("{% load players %}{{ a|opponent_label }}/{{ b|opponent_label }}/{{ c|opponent_label }}").render(
+            Context({"a": "user_legacy01", "b": "user_gone9999", "c": "Plain Name"}))
+        self.assertEqual(out, "Legacy/Trainer 9999/Plain Name")

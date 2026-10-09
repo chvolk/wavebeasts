@@ -1209,16 +1209,20 @@ def account_summary(user, w=None):
 
 
 @require_GET
+def _daily_profile_sync(user):
+    """Refresh the cached Clerk identity (chosen username, primary email) at most once a day from
+    device traffic, so a renamed account shows its new handle without waiting for a web sign-in."""
+    if user.username.startswith("user_") and cache.add(f"profile-sync:{user.pk}", True, 86400):
+        clerkauth.sync_profile(user)
+
+
 def api_account(request):
     """Private linked-account summary. Available to free and paid devices."""
     node = Node.objects.select_related("user").filter(token=request.headers.get("X-WB-Node-Token", "")).first()
     if not node:
         return JsonResponse({"error": "bad node token"}, status=403)
     user = node.user
-    # Refresh the cached Clerk identity (chosen username, primary email) once a day from device
-    # check-ins, so a renamed account shows its new handle without waiting for a web sign-in.
-    if user.username.startswith("user_") and cache.add(f"profile-sync:{user.pk}", True, 86400):
-        clerkauth.sync_profile(user)
+    _daily_profile_sync(user)
     w = _wallet(user)
     response = JsonResponse({"ok": True, "account": account_summary(user, w),
         "node": {"name": node.name, "kind": node.kind, "next_snapshot_in": node.seconds_until_ready()},
@@ -1620,4 +1624,5 @@ def node_check_in(request):
         node_health.report(node, body)
     except (ValueError, TypeError):
         return JsonResponse({"error": "Invalid version report"}, status=400)
+    _daily_profile_sync(node.user)
     return JsonResponse({**status(node), "passive_interval_sec": 1800})

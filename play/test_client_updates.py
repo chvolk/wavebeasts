@@ -70,3 +70,19 @@ class ClientUpdateTests(TestCase):
         self.assertEqual(manifest['minimum_engine_code'],MIN_ENGINE_CODE)
         self.assertLessEqual(parts(MIN_ENGINE_VERSION),parts(manifest['version_name']))
         self.assertLessEqual(parts(MIN_LISTENER_VERSION),parts(manifest['listener_version']))
+
+
+class CheckInProfileSyncTests(TestCase):
+    def test_check_in_refreshes_clerk_identity_once_a_day(self):
+        from django.core.cache import cache
+        cache.clear()
+        user=User.objects.create_user('user_handle', first_name='Real Name')
+        node=Node.objects.create(user=user, name='Phone')
+        with patch('play.clerkauth.account_profile', return_value={'name':'handle','email':'h@example.test'}) as prof:
+            for _ in range(2):
+                r=self.client.post('/api/node/check-in', json.dumps({'client':{'id':'wavebeast','app_v':'0.13.0'}}),
+                                   content_type='application/json', HTTP_X_WB_NODE_TOKEN=node.token)
+                self.assertEqual(r.status_code, 200)
+        self.assertEqual(prof.call_count, 1)
+        user.refresh_from_db()
+        self.assertEqual(user.first_name, 'handle')

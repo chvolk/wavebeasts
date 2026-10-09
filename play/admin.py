@@ -11,8 +11,11 @@ class WalletAdmin(admin.ModelAdmin):
     list_display = ("user", "subscribed", "subscription_status", "billing_provider", "shards", "cores")
     list_filter = ("subscribed", "billing_provider", "subscription_status")
     search_fields = ("user__username", "user__email")
-    readonly_fields = ("stripe_customer_id", "play_purchase_token", "play_product_id", "play_base_plan",
-                       "play_expires_at", "play_auto_renewing", "play_linked_at", "play_obfuscated_id")
+    # team_ids/last_sync are game-managed; the stock JSONField form widget rejects an empty box, which blocked
+    # saving Premium from the admin, so keep them read-only here.
+    readonly_fields = ("team_ids", "last_sync", "stripe_customer_id", "play_purchase_token", "play_product_id",
+                       "play_base_plan", "play_expires_at", "play_auto_renewing", "play_linked_at",
+                       "play_obfuscated_id")
     raw_id_fields = ("user",)
 
 

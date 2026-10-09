@@ -58,3 +58,23 @@ class GrantPremiumTests(TestCase):
             call_command("grant_premium", "cvolk", stdout=StringIO())
         with self.assertRaises(CommandError):
             call_command("grant_premium", "nobody", stdout=StringIO())
+
+
+class WalletAdminFormTests(TestCase):
+    def test_wallet_admin_saves_premium_without_team_ids(self):
+        from django.contrib.auth.models import User
+        from django.test import Client
+        admin = User.objects.create_superuser("root", "root@example.com", "pw")
+        user = User.objects.create_user("player", "p@example.com", "pw")
+        Wallet.objects.get_or_create(user=user)
+        w = Wallet.objects.get(user=user)
+        c = Client()
+        c.force_login(admin)
+        r = c.post(f"/admin/play/wallet/{w.pk}/change/", {
+            "user": user.pk, "shards": 50, "cores": 0, "subscribed": "on", "subscription_status": "active",
+            "billing_provider": "", "play_auto_renewing": "", "onboarded": "", "_save": "Save",
+        })
+        self.assertEqual(r.status_code, 302, getattr(r, "content", b"")[:2000])
+        w.refresh_from_db()
+        self.assertTrue(w.subscribed)
+        self.assertEqual(w.team_ids, [])

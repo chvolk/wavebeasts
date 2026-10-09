@@ -1208,7 +1208,6 @@ def account_summary(user, w=None):
     }
 
 
-@require_GET
 def _daily_profile_sync(user):
     """Refresh the cached Clerk identity (chosen username, primary email) at most once a day from
     device traffic, so a renamed account shows its new handle without waiting for a web sign-in."""
@@ -1216,6 +1215,7 @@ def _daily_profile_sync(user):
         clerkauth.sync_profile(user)
 
 
+@require_GET
 def api_account(request):
     """Private linked-account summary. Available to free and paid devices."""
     node = Node.objects.select_related("user").filter(token=request.headers.get("X-WB-Node-Token", "")).first()

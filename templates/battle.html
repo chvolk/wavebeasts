@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load static %}
+{% extends "base.html" %}{% load static %}{% load players %}
 {% block title %}Battle · WaveBeasts{% endblock %}
 {% block content %}
 <h1 style="margin:0 0 4px">Battle</h1>
@@ -80,7 +80,7 @@
   <div class="label">Top trainers</div>
   <div class="card" style="padding:4px 14px;margin:0">
     <table><tr><th>#</th><th>Trainer</th><th>MMR</th><th>W/L</th></tr>
-    {% for t in top %}<tr><td>{{ forloop.counter }}</td><td>{{ t.user.username }}</td><td class="sv">{{ t.mmr }}</td><td class="muted">{{ t.wins }}/{{ t.losses }}</td></tr>{% endfor %}
+    {% for t in top %}<tr><td>{{ forloop.counter }}</td><td>{{ t.user|player_name }}</td><td class="sv">{{ t.mmr }}</td><td class="muted">{{ t.wins }}/{{ t.losses }}</td></tr>{% endfor %}
     </table>
   </div>
   {% endif %}

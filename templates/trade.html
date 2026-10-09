@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load players %}
 {% block title %}Trade · WaveBeasts{% endblock %}
 {% block content %}
 <h1 style="margin:0 0 4px">Trade market</h1>
@@ -30,7 +30,7 @@
   {% for o in incoming %}
   <tr>
     <td>
-      <b>{{ o.from_user.username }}</b>:
+      <b>{{ o.from_user|player_name }}</b>:
       {% for b in o.offered_beasts.all %}<span class="tag rt-{{ b.rarity }}" style="margin:1px 2px">{{ b.name }} Lv{{ b.level }}</span>{% empty %}{% if o.offered_beast %}<span class="tag rt-{{ o.offered_beast.rarity }}">{{ o.offered_beast.name }} Lv{{ o.offered_beast.level }}</span>{% endif %}{% endfor %}
       {% if o.offered_shards %}<span class="chip silver" style="padding:2px 8px">+{{ o.offered_shards }} shards</span>{% endif %}
       {% if o.offered_cores %}<span class="chip acc" style="padding:2px 8px">+{{ o.offered_cores }} cores</span>{% endif %}
@@ -58,7 +58,7 @@
       {% if o.offered_shards %}<span class="chip silver" style="padding:2px 8px">+{{ o.offered_shards }} shards</span>{% endif %}
       {% if o.offered_cores %}<span class="chip acc" style="padding:2px 8px">+{{ o.offered_cores }} cores</span>{% endif %}
     </td>
-    <td><b>{{ o.listing.beast.name }}</b> ({{ o.listing.beast.rarity }}) - {{ o.listing.user.username }}</td>
+    <td><b>{{ o.listing.beast.name }}</b> ({{ o.listing.beast.rarity }}) - {{ o.listing.user|player_name }}</td>
     <td style="text-align:right"><form method="post" action="/trade/offer/{{ o.id }}/withdraw" style="display:inline">{% csrf_token %}<button class="btn sec sm" type="submit">Withdraw</button></form></td>
   </tr>
   {% endfor %}
@@ -94,7 +94,7 @@
     <div class="nm">{{ l.beast.name }}</div>
     <div class="ty">{{ l.beast.types_display }}</div>
     <span class="tag rt-{{ l.beast.rarity }}">{{ l.beast.rarity }}</span>
-    <div class="dim" style="font-size:11px;margin-top:4px">by {{ l.user.username }}{% if l.note %} - "{{ l.note }}"{% endif %}</div>
+    <div class="dim" style="font-size:11px;margin-top:4px">by {{ l.user|player_name }}{% if l.note %} - "{{ l.note }}"{% endif %}</div>
     {% if tradeable or wallet.shards or wallet.cores %}
     <details style="margin-top:8px;text-align:left">
       <summary class="btn sm" style="cursor:pointer;list-style:none;text-align:center">Make offer</summary>
@@ -107,8 +107,8 @@
         </select>
         {% endfor %}
         <div class="stack" style="gap:6px">
-          <input name="shards" type="number" min="0" max="{{ wallet.shards }}" value="0" style="padding:6px;font-size:12px" placeholder="shards">
-          <input name="cores" type="number" min="0" max="{{ wallet.cores }}" value="0" style="padding:6px;font-size:12px" placeholder="cores">
+          <label style="margin:0;display:flex;align-items:center;gap:6px;font-size:12px">Shards <input name="shards" type="number" min="0" max="{{ wallet.shards }}" value="0" style="padding:6px;font-size:12px;flex:1" placeholder="shards"></label>
+          <label style="margin:0;display:flex;align-items:center;gap:6px;font-size:12px">Cores <input name="cores" type="number" min="0" max="{{ wallet.cores }}" value="0" style="padding:6px;font-size:12px;flex:1" placeholder="cores"></label>
         </div>
         <button class="btn sm" type="submit">Send offer</button>
       </form>

@@ -17,6 +17,7 @@ from django.conf import settings
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
+from .names import player_name
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
@@ -50,7 +51,7 @@ def _device(request):
 
 
 def _display_name(user):
-    return user.first_name or user.email or user.username
+    return player_name(user)
 
 
 @login_required

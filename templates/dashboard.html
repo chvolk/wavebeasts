@@ -1,7 +1,7 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load players %}
 {% block title %}My Profile · WaveBeasts{% endblock %}
 {% block content %}
-<h1>{{ user.username }}</h1>
+<h1>{{ user|player_name }}</h1>
 <div>
   <span class="chip">Shards <b>{{ wallet.shards }}</b></span>
   <span class="chip">Cores <b>{{ wallet.cores }}</b></span>

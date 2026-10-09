@@ -25,6 +25,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.core.cache import cache
 
 from . import billing as billing_mod, buddy as buddymod, clerkauth, ladder, resolver
+from .names import player_name
 from .models import (AsyncBattle, Buddy, BattleRecord, InventoryItem, LadderTeam, Node,
                      OwnedBeast, Snapshot, TradeListing, TradeOffer, Wallet)
 
@@ -864,7 +865,7 @@ def battle_fight(request):
     for w in others:
         t = _team_for(w.user)
         if t:
-            opp_name, opp_team = w.user.username, t
+            opp_name, opp_team = player_name(w.user), t
             break
     gym_match = not opp_team
     if gym_match:

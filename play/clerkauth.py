@@ -23,8 +23,11 @@ def account_profile(sub):
         emails = u.get("email_addresses") or []
         primary = next((e for e in emails if e.get("id") == u.get("primary_email_address_id")), {})
         email = primary.get("email_address", "")
-        name = " ".join(x for x in [u.get("first_name"), u.get("last_name")] if x).strip()
-        name = name or u.get("username") or email.split("@")[0]
+        # Players pick a username at sign-up; that is their public handle everywhere (ladder, trades).
+        # Fall back to the real name only for accounts without one.
+        name = (u.get("username") or "").strip()
+        name = name or " ".join(x for x in [u.get("first_name"), u.get("last_name")] if x).strip()
+        name = name or email.split("@")[0]
         return {"name": str(name or "")[:40], "email": str(email or "")[:254]}
     except (requests.RequestException, ValueError, TypeError):
         return None

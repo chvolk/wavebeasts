@@ -1215,8 +1215,9 @@ def api_account(request):
     if not node:
         return JsonResponse({"error": "bad node token"}, status=403)
     user = node.user
-    # Existing Clerk accounts only cached a name. Backfill missing email without requiring a new login.
-    if not user.email and user.username.startswith("user_") and cache.add(f"profile-backfill:{user.pk}", True, 300):
+    # Refresh the cached Clerk identity (chosen username, primary email) once a day from device
+    # check-ins, so a renamed account shows its new handle without waiting for a web sign-in.
+    if user.username.startswith("user_") and cache.add(f"profile-sync:{user.pk}", True, 86400):
         clerkauth.sync_profile(user)
     w = _wallet(user)
     response = JsonResponse({"ok": True, "account": account_summary(user, w),

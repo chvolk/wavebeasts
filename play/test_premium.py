@@ -243,6 +243,16 @@ class ClerkProfileTests(TestCase):
         profile=clerkauth.account_profile('user_fixture')
         self.assertEqual(profile,{'name':'Signal Hunter','email':'current@example.test'})
 
+    @patch('play.clerkauth.requests.get')
+    def test_profile_prefers_chosen_username(self, get):
+        from . import clerkauth
+        get.return_value.json.return_value = {
+            'username':'signalhunter', 'first_name':'Signal', 'last_name':'Hunter',
+            'primary_email_address_id':'primary',
+            'email_addresses':[{'id':'primary','email_address':'current@example.test'}]}
+        profile=clerkauth.account_profile('user_fixture')
+        self.assertEqual(profile['name'],'signalhunter')
+
     @patch('play.clerkauth.account_profile', return_value=None)
     def test_failed_lookup_preserves_cached_identity(self, profile):
         from . import clerkauth

@@ -7,7 +7,6 @@ from django.db.models import F
 from . import resolver, journals
 from .activity import audit
 from .models import AsyncBattle, LadderTeam, Wallet
-from .names import player_name
 
 WIN_SHARDS = 10
 ELO_K = 24
@@ -50,8 +49,8 @@ def resolve_match(a, b, initiator=None):
     a.save(update_fields=["mmr", "wins", "losses", "updated"])
     b.save(update_fields=["mmr", "wins", "losses", "updated"])
     turns = res.get("turns", 0)
-    AsyncBattle.objects.create(user=a.user, opponent=player_name(b.user), result=a_res, mmr_delta=delta, turns=turns, seen=(a.user_id == getattr(initiator, "id", None)))
-    AsyncBattle.objects.create(user=b.user, opponent=player_name(a.user), result=b_res, mmr_delta=-delta, turns=turns, seen=(b.user_id == getattr(initiator, "id", None)))
+    AsyncBattle.objects.create(user=a.user, opponent=b.user.username, result=a_res, mmr_delta=delta, turns=turns, seen=(a.user_id == getattr(initiator, "id", None)))
+    AsyncBattle.objects.create(user=b.user, opponent=a.user.username, result=b_res, mmr_delta=-delta, turns=turns, seen=(b.user_id == getattr(initiator, "id", None)))
     winner_user = a.user if a_res == "win" else (b.user if b_res == "win" else None)
     if winner_user:
         Wallet.objects.filter(user=winner_user).update(shards=F("shards") + WIN_SHARDS)

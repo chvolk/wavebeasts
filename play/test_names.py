@@ -22,8 +22,17 @@ class PlayerNameTests(TestCase):
         self.assertNotIn("user_", out)
 
 
-    def test_opponent_label_resolves_legacy_ids(self):
-        User.objects.create_user("user_legacy01", first_name="Legacy")
-        out = Template("{% load players %}{{ a|opponent_label }}/{{ b|opponent_label }}/{{ c|opponent_label }}").render(
-            Context({"a": "user_legacy01", "b": "user_gone9999", "c": "Plain Name"}))
-        self.assertEqual(out, "Legacy/Trainer 9999/Plain Name")
+
+class LadderOpponentNameTests(TestCase):
+    def test_ladder_results_show_current_handle(self):
+        from .models import AsyncBattle, Wallet
+        from .views import _label_opponents
+        me = User.objects.create_user("user_me")
+        Wallet.objects.get_or_create(user=me)
+        opp = User.objects.create_user("user_opp1234", first_name="oldname")
+        AsyncBattle.objects.create(user=me, opponent="user_opp1234", result="loss", mmr_delta=-5, turns=3)
+        AsyncBattle.objects.create(user=me, opponent="user_gone9999", result="win", mmr_delta=5, turns=3)
+        AsyncBattle.objects.create(user=me, opponent="Stored Name", result="win", mmr_delta=5, turns=3)
+        opp.first_name = "newhandle"; opp.save()
+        rows = _label_opponents(list(me.ladder_battles.all()))
+        self.assertEqual(sorted(r.opponent_name for r in rows), ["Stored Name", "Trainer 9999", "newhandle"])

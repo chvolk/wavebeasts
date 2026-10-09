@@ -771,6 +771,15 @@ def _gym_team():
     return team
 
 
+def _label_opponents(rows):
+    """AsyncBattle.opponent stores the opponent's username (a Clerk id); show the current handle."""
+    ids = {r.opponent for r in rows if r.opponent.startswith("user_")}
+    names = {u.username: player_name(u) for u in User.objects.filter(username__in=ids)} if ids else {}
+    for r in rows:
+        r.opponent_name = names.get(r.opponent) or ("Trainer " + r.opponent[-4:] if r.opponent.startswith("user_") else r.opponent)
+    return rows
+
+
 @login_required
 def battle(request):
     owned = list(request.user.beasts.filter(status="owned"))
@@ -784,7 +793,7 @@ def battle(request):
         "owned": owned, "team_ids": team_ids, "result": result,
         "records": list(request.user.battles.all()[:8]), "nav": "battle",
         "ladder": lt, "unseen": unseen,
-        "ladder_recent": list(request.user.ladder_battles.all()[:10]),
+        "ladder_recent": _label_opponents(list(request.user.ladder_battles.all()[:10])),
         "top": list(LadderTeam.objects.select_related("user")[:10]),
         "ladder_msg": request.session.pop("ladder_msg", None),
     })

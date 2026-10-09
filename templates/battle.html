@@ -53,7 +53,7 @@
     <div class="label" style="margin-top:0">While you were away · {{ unseen|length }} match{{ unseen|length|pluralize:"es" }}</div>
     {% for b in unseen %}
     <div class="stat"><span style="color:{% if b.result == 'win' %}var(--yellow){% elif b.result == 'loss' %}var(--red){% else %}var(--silver){% endif %};text-transform:capitalize">{{ b.result }}</span>
-      <span class="muted">vs {{ b.opponent|opponent_label }}</span><span class="sv">{{ b.mmr_delta }} MMR</span></div>
+      <span class="muted">vs {{ b.opponent_name }}</span><span class="sv">{{ b.mmr_delta }} MMR</span></div>
     {% endfor %}
   </div>
   {% endif %}
@@ -72,7 +72,7 @@
   <div style="max-height:180px;overflow:auto">
     {% for b in ladder_recent %}
     <div class="stat"><span style="color:{% if b.result == 'win' %}var(--yellow){% elif b.result == 'loss' %}var(--red){% else %}var(--silver){% endif %};text-transform:capitalize">{{ b.result }}</span>
-      <span class="muted">vs {{ b.opponent|opponent_label }}</span><span class="sv" style="margin-left:8px">{% if b.mmr_delta > 0 %}+{% endif %}{{ b.mmr_delta }}</span></div>
+      <span class="muted">vs {{ b.opponent_name }}</span><span class="sv" style="margin-left:8px">{% if b.mmr_delta > 0 %}+{% endif %}{{ b.mmr_delta }}</span></div>
     {% endfor %}
   </div>
   {% endif %}

@@ -275,7 +275,7 @@ class AccountApiAndVersionTests(TestCase):
 
     def test_version_manifest(self):
         data = self.client.get("/api/app/version").json()
-        self.assertEqual((data["version_code"], data["version_name"]), (38, "0.13.0"))
+        self.assertEqual((data["version_code"], data["version_name"]), (39, "0.13.1"))
         self.assertEqual(data["play_url"], appversion.PLAY_URL)
         self.assertIn("uninstall", data["notes"].lower())
 

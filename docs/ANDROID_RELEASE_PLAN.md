@@ -271,3 +271,22 @@ purchases don't charge. (5) Schedule `play_reconcile` daily on Railway.
   `play-verify@…`, subscription `premium` (`monthly`/`annual`), RTDN topic + test notification,
   license testers, upload `dist/wavebeast-play.aab` to internal testing, then a test purchase.
 
+
+## Status 2026-10-12 (pinned; resume here)
+
+- Play Console (account jwest@jameswest.space): `play-verify@…` invited as an admin, payments
+  profile created, license testers + internal tester list added, monetization setup saved with
+  RTDN topic `projects/wavebeasts-play/topics/play-rtdn` (test-notification receipt not yet
+  confirmed in Railway logs; look for a `play rtdn` line ending in `test`).
+- Subscription `premium` created through the Android Publisher API with base plans `monthly`
+  (P1M, legacy-compatible) and `annual` (P1Y), both ACTIVE; regional prices converted from
+  USD with regions version 2026/01.
+- Play rejected bundle 38 (Play Billing Library 7.1.1; 8.0.0 is the floor). 0.13.1 / build 39
+  bumps the library and adapts `BillingBridge` to `QueryProductDetailsResult`; uploaded via the
+  API and rolled out on the Internal testing track as "0.13.1 (39)", status completed. Site
+  serves the 0.13.1 sideload APK; engine tag `v0.13.1`.
+- Next, in order: (1) Play app signing → "Change the app signing key" with the existing
+  release key (pepk export from `~/.config/wavebeast/release.jks`); (2) opt phone 2 in via the
+  Internal testing "Join on the web" link and install from Play; (3) $0 test purchase on
+  `cvolk`, confirm `/webhooks/play` + `play_verify` in Railway logs; (4) record the outcome in
+  `docs/FEATURE_VALIDATION.md`.
